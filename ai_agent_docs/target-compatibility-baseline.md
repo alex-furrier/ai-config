@@ -2,7 +2,7 @@
 
 This file records the runtime assumptions behind ai-config target conversion.
 
-Last checked: 2026-08-20
+Last checked: 2026-09-23
 Context: first-class Codex plugin packages, source-less Codex marketplace metadata, Codex compatibility, and Claude skill include metadata for shared-resource projection.
 
 ## Summary
@@ -70,7 +70,7 @@ This is ai-config build metadata, not a claim that Claude itself materializes th
 accepts and loads the source skill; ai-config strips the field while producing self-contained target
 skills.
 
-## Codex 0.144.5, 0.145.0, 0.146.0, 0.148.0, 0.149.0, and 0.153.3 runtime evidence
+## Codex 0.144.5, 0.145.0, 0.146.0, 0.148.0, 0.149.0, 0.153.3, and 0.156.1 runtime evidence
 
 The latest lane resolved npm's `@openai/codex@latest` tag at execution time on 2026-07-16:
 
@@ -142,8 +142,20 @@ platform integrity: sha512-cIJh2xhww3ZBXmgBt6e9gQjrdL2c9xiiq7yimDHtTGdg3wiUOADD/
 install source:    integrity-verified direct npm registry tarball extraction
 ```
 
-The 0.153.3 runtime probes confirmed the same stable feature rows, lifecycle mutation semantics,
-source-less catalog behavior, and public-sync convergence contract previously observed through
+The complete auth-free package probe passed for Codex 0.156.1 on 2026-09-23:
+
+```text
+resolved package: @openai/codex@0.156.1
+version output:   codex-cli 0.156.1
+main tarball:      https://registry.npmjs.org/@openai/codex/-/codex-0.156.1.tgz
+main integrity:    sha512-nI1iVl/n2SO2lSvlwEsJx63zdSI4C4Me2gR7AG0OWMJiGSakz2tY2hx43E39Zq5aEoeB5bZjJXzp5Sqhog6vyA==
+darwin-arm64:      https://registry.npmjs.org/@openai/codex/-/codex-0.156.1-darwin-arm64.tgz
+darwin-arm64 integrity: sha512-Jg6wbdV+wmMZczhwE74GSxOYEZlViKXn6KyCw/yfrz3PAKFD14xljuPopmdhWC1+8IKU2WdN5fdmXNPt2q4HPA==
+install source:    Dots-managed npm package with isolated auth-free probe state
+```
+
+The 0.153.3 and 0.156.1 runtime probes confirmed the same stable feature rows, lifecycle mutation
+semantics, source-less catalog behavior, and package discovery contract previously observed through
 0.149.0. A logged-in catalog probe additionally found remote available rows using typed
 `{"source":"remote","id":"..."}` identities instead of URLs, plus a small number of duplicate
 remote plugin identities with distinct remote IDs and versions. The adapter validates and preserves
@@ -182,9 +194,10 @@ Observed help surfaces:
 | `codex plugin marketplace upgrade --help` | Refresh configured Git marketplace snapshots. |
 | `codex plugin marketplace remove --help` | Remove a configured marketplace source by name |
 
-Official sources checked through 2026-08-20:
+Official sources checked through 2026-09-23:
 
 - [Codex changelog](https://developers.openai.com/codex/changelog)
+- [Codex 0.156.1 release](https://github.com/openai/codex/releases/tag/rust-v0.156.1)
 - [Codex 0.153.3 release](https://github.com/openai/codex/releases/tag/rust-v0.153.3)
 - [Codex 0.149.0 release](https://github.com/openai/codex/releases/tag/rust-v0.149.0)
 - [Codex 0.148.0 release](https://github.com/openai/codex/releases/tag/rust-v0.148.0)
@@ -219,9 +232,9 @@ duplicate runtime records, source/path mismatches, and SemVer downgrades fail be
 Removal is limited to entries recorded in the ownership file. Possible old loose output is reported
 by `doctor` and never removed without proof of ownership.
 
-The adapter accepts Codex 0.144.x through 0.149.x and 0.153.x contracts. Captured isolated runtime
-evidence in this document includes 0.153.3; unverified 0.150.x through 0.152.x releases remain
-fail-closed. The adapter validates the CLI version plus typed schemas and
+The adapter accepts Codex 0.144.x through 0.149.x, 0.153.x, and 0.156.x contracts. Captured
+isolated runtime evidence in this document includes 0.153.3 and 0.156.1. Unverified 0.150.x through
+0.152.x, 0.154.x, and 0.155.x releases remain fail-closed. The adapter validates the CLI version plus typed schemas and
 semantic identity for marketplace list/add/remove and plugin list/add/remove responses. Malformed
 JSON, duplicate keys/records, partial output, unknown versions,
 and inconsistent success responses are errors. Every call uses a finite timeout and bounds/strips
