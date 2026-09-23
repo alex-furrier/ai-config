@@ -2,7 +2,7 @@
 
 This file records the runtime assumptions behind ai-config target conversion.
 
-Last checked: 2026-08-20
+Last checked: 2026-09-23
 Context: first-class Codex plugin packages, source-less Codex marketplace metadata, Codex compatibility, and Claude skill include metadata for shared-resource projection.
 
 ## Summary
@@ -194,7 +194,7 @@ Observed help surfaces:
 | `codex plugin marketplace upgrade --help` | Refresh configured Git marketplace snapshots. |
 | `codex plugin marketplace remove --help` | Remove a configured marketplace source by name |
 
-Official sources checked through 2026-08-20:
+Official sources checked through 2026-09-23:
 
 - [Codex changelog](https://developers.openai.com/codex/changelog)
 - [Codex 0.156.1 release](https://github.com/openai/codex/releases/tag/rust-v0.156.1)
