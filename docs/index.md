@@ -17,7 +17,7 @@ Or more simply, run `ai-config init` and it writes the config for you.
 ## Installation
 
 ```bash
-uv tool install git+https://github.com/safurrier/ai-config
+uv tool install git+https://github.com/alex-furrier/ai-config
 ```
 
 This installs `ai-config` globally. Run `ai-config --help` to verify.
@@ -25,7 +25,7 @@ This installs `ai-config` globally. Run `ai-config --help` to verify.
 ### For Development
 
 ```bash
-git clone https://github.com/safurrier/ai-config.git
+git clone https://github.com/alex-furrier/ai-config.git
 cd ai-config
 just setup    # Install dependencies
 just check    # Run lint, type check, tests

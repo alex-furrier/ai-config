@@ -45,7 +45,7 @@ ai-config --help
 From source, use the repo URL instead:
 
 ```bash
-uv tool install git+https://github.com/safurrier/ai-config
+uv tool install git+https://github.com/alex-furrier/ai-config
 ```
 
 ## Quick start: preview before you sync
@@ -145,7 +145,7 @@ For options and examples, use [Commands](docs/commands.md). For target behavior 
 ## Development
 
 ```bash
-git clone https://github.com/safurrier/ai-config.git
+git clone https://github.com/alex-furrier/ai-config.git
 cd ai-config
 uv sync --all-extras
 uv run ruff check src/

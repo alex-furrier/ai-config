@@ -1,6 +1,6 @@
 # Architecture decisions
 
-These records explain lasting choices whose rationale is established in repository history. They complement the current contract in [SPEC.md](https://github.com/safurrier/ai-config/blob/main/SPEC.md), the [architecture overview](../architecture.md), and the [project evolution](../project-evolution.md).
+These records explain lasting choices whose rationale is established in repository history. They complement the current contract in [SPEC.md](https://github.com/alex-furrier/ai-config/blob/main/SPEC.md), the [architecture overview](../architecture.md), and the [project evolution](../project-evolution.md).
 
 | Decision | Status | Effective date |
 |---|---|---|
