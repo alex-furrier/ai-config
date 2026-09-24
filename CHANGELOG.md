@@ -21,6 +21,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Current repository and documentation links now use the renamed GitHub owner `alex-furrier`;
+  the PyPI trusted-publisher setup instructions identify the new owner.
 - Conversion cache version 9 keys entries by configured plugin selector instead of physical source
   path, records source provenance, and invalidates legacy content entries while preserving validated
   tracked Codex and Pi output roots for cleanup discovery.
