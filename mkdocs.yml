@@ -1,10 +1,10 @@
 site_name: ai-config
-site_url: https://safurrier.github.io/ai-config/
+site_url: https://alex-furrier.github.io/ai-config/
 site_description: Declarative plugin manager for Claude Code
 site_author: Alex Furrier
 
-repo_name: safurrier/ai-config
-repo_url: https://github.com/safurrier/ai-config
+repo_name: alex-furrier/ai-config
+repo_url: https://github.com/alex-furrier/ai-config
 edit_uri: edit/main/docs/
 
 theme:
@@ -92,4 +92,4 @@ nav:
 extra:
   social:
     - icon: fontawesome/brands/github
-      link: https://github.com/safurrier/ai-config
+      link: https://github.com/alex-furrier/ai-config

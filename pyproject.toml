@@ -57,11 +57,11 @@ docs = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/safurrier/ai-config"
-Documentation = "https://safurrier.github.io/ai-config/"
-Repository = "https://github.com/safurrier/ai-config"
-Issues = "https://github.com/safurrier/ai-config/issues"
-Changelog = "https://github.com/safurrier/ai-config/blob/main/CHANGELOG.md"
+Homepage = "https://github.com/alex-furrier/ai-config"
+Documentation = "https://alex-furrier.github.io/ai-config/"
+Repository = "https://github.com/alex-furrier/ai-config"
+Issues = "https://github.com/alex-furrier/ai-config/issues"
+Changelog = "https://github.com/alex-furrier/ai-config/blob/main/CHANGELOG.md"
 
 [build-system]
 requires = ["hatchling"]

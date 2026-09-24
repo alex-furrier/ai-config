@@ -21,6 +21,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Current repository and documentation links now use the renamed GitHub owner `alex-furrier`;
+  the PyPI trusted-publisher setup instructions identify the new owner.
 - Conversion cache version 9 keys entries by configured plugin selector instead of physical source
   path, records source provenance, and invalidates legacy content entries while preserving validated
   tracked Codex and Pi output roots for cleanup discovery.
@@ -212,7 +214,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Support for GitHub and local marketplaces
 - User and project scope plugin installation
 
-[Unreleased]: https://github.com/safurrier/ai-config/compare/v0.6.2...HEAD
+[Unreleased]: https://github.com/alex-furrier/ai-config/compare/v0.6.2...HEAD
 [0.6.2]: https://github.com/safurrier/ai-config/compare/v0.6.1...v0.6.2
 [0.6.1]: https://github.com/safurrier/ai-config/compare/v0.6.0...v0.6.1
 [0.6.0]: https://github.com/safurrier/ai-config/compare/v0.5.0...v0.6.0

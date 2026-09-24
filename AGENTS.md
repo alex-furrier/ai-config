@@ -173,7 +173,7 @@ Publishing is automated via GitHub Actions (`.github/workflows/publish.yml`):
 
 **One-time setup (repo admin):**
 1. Go to PyPI → Account settings → Publishing
-2. Add trusted publisher: GitHub repository safurrier/ai-config, workflow `publish.yml`, environment `pypi`
+2. Add trusted publisher: GitHub repository alex-furrier/ai-config, workflow `publish.yml`, environment `pypi`
 3. Go to GitHub repo → Settings → Environments → Create `pypi` environment
 
 ## Repo-local Skills
