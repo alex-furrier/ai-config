@@ -17,6 +17,7 @@ from ai_config.converters.codex_package import CodexPackageSpec
 from ai_config.path_policy import GENERATED_PYTHON_ENVIRONMENT_DIRECTORY_NAMES
 from ai_config.pi_ownership import load_pi_ownership
 from ai_config.source_safety import ContainedSource, SourceSafetyError
+from ai_config.sync_pipeline import SourceProvenance
 from ai_config.types import ClaudeTargetConfig, ConversionConfig, PluginConfig, PluginSource
 
 _CONVERSION_CACHE_VERSION = 9
@@ -147,8 +148,26 @@ def conversion_signature(conversion: ConversionConfig, output_dir: Path) -> str:
     )
 
 
+def _is_installed_claude_cache_source(plugin_path: Path, provenance: SourceProvenance) -> bool:
+    if provenance != "installed_plugin":
+        return False
+    configured_dir = os.environ.get("CLAUDE_CONFIG_DIR", "").strip()
+    config_dir = Path(configured_dir).expanduser() if configured_dir else Path.home() / ".claude"
+    cache_dir = (config_dir / "plugins" / "cache").absolute()
+    try:
+        source = plugin_path.absolute()
+        if ".." in source.parts or ".." in cache_dir.parts:
+            return False
+        return bool(source.relative_to(cache_dir).parts)
+    except (ValueError, OSError, RuntimeError):
+        return False
+
+
 def _compute_plugin_hash(
-    plugin_path: Path, *, ignored_paths: frozenset[PurePath] = frozenset()
+    plugin_path: Path,
+    *,
+    ignored_paths: frozenset[PurePath] = frozenset(),
+    provenance: SourceProvenance = "configured_local",
 ) -> str | None:
     hasher = hashlib.sha256()
     context = "plugin conversion hash" if ignored_paths else "plugin hash"
@@ -160,6 +179,12 @@ def _compute_plugin_hash(
             files, context_mirrors = source.snapshot_files_and_context_mirrors(
                 context=context,
                 excluded_directory_names=GENERATED_PYTHON_ENVIRONMENT_DIRECTORY_NAMES,
+                # Only Claude's observed installed cache sources have runtime PID markers.
+                excluded_root_directory_names=(
+                    frozenset({".in_use"})
+                    if _is_installed_claude_cache_source(plugin_path, provenance)
+                    else frozenset()
+                ),
             )
             for relative in files:
                 if relative in ignored_paths:
@@ -181,16 +206,21 @@ def _compute_plugin_hash(
         return None
 
 
-def compute_plugin_hash(plugin_path: Path) -> str | None:
-    """Hash every safely readable plugin byte for source-staleness checks."""
-    return _compute_plugin_hash(plugin_path)
+def compute_plugin_hash(
+    plugin_path: Path, *, provenance: SourceProvenance = "configured_local"
+) -> str | None:
+    """Hash plugin bytes, omitting Claude's markers only for installed cache sources."""
+    return _compute_plugin_hash(plugin_path, provenance=provenance)
 
 
 def compute_plugin_conversion_hash(
-    plugin_path: Path, *, ignored_paths: frozenset[PurePath]
+    plugin_path: Path,
+    *,
+    ignored_paths: frozenset[PurePath],
+    provenance: SourceProvenance = "configured_local",
 ) -> str | None:
     """Hash conversion inputs while omitting parser-confirmed generated artifacts."""
-    return _compute_plugin_hash(plugin_path, ignored_paths=ignored_paths)
+    return _compute_plugin_hash(plugin_path, ignored_paths=ignored_paths, provenance=provenance)
 
 
 def _lexical_regular_directory(path: Path) -> Path | None:

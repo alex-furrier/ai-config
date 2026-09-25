@@ -8,6 +8,7 @@ import pytest
 
 from ai_config.adapters.claude import CommandResult, InstalledMarketplace, InstalledPlugin
 from ai_config.operations import apply_sync_plan, build_sync_plan, sync_target
+from ai_config.sync_orchestration import _source_batch
 from ai_config.sync_pipeline import (
     CacheOwnershipSnapshot,
     DesiredState,
@@ -223,6 +224,36 @@ def test_ownership_drift_blocks_every_planned_action(tmp_path: Path) -> None:
 
     assert report.completed == ()
     assert report.errors == ("Ownership state changed after sync planning; no action was executed",)
+
+
+def test_source_batch_hashes_local_in_use_but_ignores_installed_cache_markers(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("CLAUDE_CONFIG_DIR", str(tmp_path / "claude-profile"))
+    local_marketplace = tmp_path / "marketplace"
+    local_plugin = local_marketplace / "demo"
+    local_plugin.mkdir(parents=True)
+    cached_plugin = tmp_path / "claude-profile/plugins/cache/remote/demo/1.0.0"
+    cached_plugin.mkdir(parents=True)
+    for plugin_path in (local_plugin, cached_plugin):
+        (plugin_path / "source.md").write_text("original")
+        (plugin_path / ".in_use").mkdir()
+        (plugin_path / ".in_use/12345").write_text("first")
+
+    local_config = ClaudeTargetConfig(
+        marketplaces={"local": MarketplaceConfig(PluginSource.LOCAL, path=str(local_marketplace))},
+        plugins=(PluginConfig("demo@local"),),
+    )
+    cached_config = ClaudeTargetConfig(plugins=(PluginConfig("demo"),))
+    installed = InstalledPlugin("demo", "1.0.0", "user", True, str(cached_plugin))
+    local_before = _source_batch(local_config, (), ()).resolved[0]
+    cached_before = _source_batch(cached_config, (installed,), ()).resolved[0]
+    assert local_before.provenance == "configured_local"
+    assert cached_before.provenance == "installed_plugin"
+    (local_plugin / ".in_use/12345").write_text("second")
+    (cached_plugin / ".in_use/12345").write_text("second")
+    assert _source_batch(local_config, (), ()).resolved[0].digest != local_before.digest
+    assert _source_batch(cached_config, (installed,), ()).resolved[0].digest == cached_before.digest
 
 
 def test_apply_writes_materialized_emitter_artifacts_without_replanning(tmp_path: Path) -> None:

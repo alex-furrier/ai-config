@@ -108,7 +108,7 @@ def _source_batch(
                 ResolvedPluginSource(
                     plugin.id,
                     path,
-                    state.compute_plugin_hash(path),
+                    state.compute_plugin_hash(path, provenance=provenance),
                     provenance,
                 )
             )
@@ -230,7 +230,7 @@ def build_sync_plan(target: TargetConfig, *, force_convert: bool = False) -> Syn
     changed_sources = tuple(
         item.config_id
         for item in sources.resolved
-        if item.digest != state.compute_plugin_hash(item.path)
+        if item.digest != state.compute_plugin_hash(item.path, provenance=item.provenance)
     )
     if unreadable_sources:
         conversion_errors += (
@@ -399,7 +399,7 @@ def _conversion_precondition_error(plan: SyncPlan, expected_cache: dict) -> str 
     changed_sources = tuple(
         item.config_id
         for item in plan.sources.resolved
-        if item.digest != state.compute_plugin_hash(item.path)
+        if item.digest != state.compute_plugin_hash(item.path, provenance=item.provenance)
     )
     if changed_sources:
         return (

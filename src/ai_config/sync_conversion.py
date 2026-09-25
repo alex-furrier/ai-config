@@ -427,6 +427,7 @@ def _plan_conversion_pipeline(
         plugin_hash = state.compute_plugin_conversion_hash(
             candidate.plugin_path,
             ignored_paths=candidate.ignored_generated_paths,
+            provenance=source.provenance,
         )
         candidate_hashes[candidate.config_id] = source.digest
         candidate_conversion_hashes[candidate.config_id] = plugin_hash
