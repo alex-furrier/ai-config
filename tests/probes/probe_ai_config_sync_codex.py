@@ -307,7 +307,7 @@ def probe(codex: str) -> dict[str, object]:
                     "Codex did not expose the constructed source-less catalog state: "
                     f"{source_less_catalog_entry}"
                 )
-        elif (version.major, version.minor) in {(0, 148), (0, 149), (0, 153), (0, 156)}:
+        elif (version.major, version.minor) in {(0, 148), (0, 149), (0, 153), (0, 156), (0, 157)}:
             if source_less_catalog_state:
                 raise AssertionError(
                     f"Codex {version.major}.{version.minor} unexpectedly exposed directly seeded "
