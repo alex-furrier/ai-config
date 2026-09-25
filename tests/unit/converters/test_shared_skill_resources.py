@@ -649,6 +649,142 @@ def test_hash_rejects_context_mirror_with_wrong_or_escaping_target(tmp_path: Pat
     assert compute_plugin_hash(plugin) is None
 
 
+def test_hash_ignores_only_installed_claude_cache_in_use_directory(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("CLAUDE_CONFIG_DIR", str(tmp_path / "claude-profile"))
+    cache = tmp_path / "claude-profile/plugins/cache/marketplace/demo/1.0.0"
+    cache.mkdir(parents=True)
+    plugin = _plugin(cache, [])
+    source = plugin / "commands.md"
+    source.write_text("original")
+    baseline = compute_plugin_hash(plugin, provenance="installed_plugin")
+    assert baseline is not None
+    conversion_baseline = compute_plugin_conversion_hash(
+        plugin, ignored_paths=frozenset(), provenance="installed_plugin"
+    )
+    assert conversion_baseline == baseline
+
+    markers = plugin / ".in_use"
+    markers.mkdir()
+    marker = markers / "12345"
+    marker.write_text("")
+    assert compute_plugin_hash(plugin, provenance="installed_plugin") == baseline
+    marker.write_text("updated runtime marker")
+    assert compute_plugin_hash(plugin, provenance="installed_plugin") == baseline
+    assert (
+        compute_plugin_conversion_hash(
+            plugin, ignored_paths=frozenset(), provenance="installed_plugin"
+        )
+        == conversion_baseline
+    )
+    marker.unlink()
+    assert compute_plugin_hash(plugin, provenance="installed_plugin") == baseline
+    markers.rmdir()
+    markers.symlink_to(tmp_path)
+    assert compute_plugin_hash(plugin, provenance="installed_plugin") is None
+    markers.unlink()
+
+    source.write_text("changed")
+    changed = compute_plugin_hash(plugin, provenance="installed_plugin")
+    assert changed is not None and changed != baseline
+    source.chmod(source.stat().st_mode | 0o100)
+    executable = compute_plugin_hash(plugin, provenance="installed_plugin")
+    assert executable is not None and executable != changed
+    source.rename(plugin / "renamed.md")
+    renamed = compute_plugin_hash(plugin, provenance="installed_plugin")
+    assert renamed is not None and renamed != executable
+
+    nested = plugin / "nested/.in_use"
+    nested.mkdir(parents=True)
+    nested_marker = nested / "12345"
+    nested_marker.write_text("plugin data")
+    assert compute_plugin_hash(plugin, provenance="installed_plugin") != renamed
+    nested_marker.unlink()
+    nested_marker.symlink_to(tmp_path)
+    assert compute_plugin_hash(plugin, provenance="installed_plugin") is None
+
+
+def test_hash_keeps_local_and_non_cache_in_use_significant(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("CLAUDE_CONFIG_DIR", str(tmp_path / "claude-profile"))
+    cache = tmp_path / "claude-profile/plugins/cache/demo"
+    cache.mkdir(parents=True)
+    plugin = _plugin(cache, [])
+    baseline = compute_plugin_hash(plugin, provenance="configured_local")
+    assert baseline is not None
+    markers = plugin / ".in_use"
+    markers.mkdir()
+    marker = markers / "12345"
+    marker.write_text("meaningful plugin data")
+    assert compute_plugin_hash(plugin, provenance="configured_local") != baseline
+    assert compute_plugin_hash(plugin, provenance="observed_remote_marketplace") != baseline
+    assert (
+        compute_plugin_conversion_hash(
+            plugin, ignored_paths=frozenset(), provenance="configured_local"
+        )
+        != baseline
+    )
+    marker.unlink()
+    marker.symlink_to(tmp_path)
+    assert compute_plugin_hash(plugin, provenance="configured_local") is None
+    marker.unlink()
+    markers.rmdir()
+
+    outside = _plugin(tmp_path, [])
+    outside_baseline = compute_plugin_hash(outside, provenance="installed_plugin")
+    (outside / ".in_use").mkdir()
+    (outside / ".in_use/12345").write_text("meaningful plugin data")
+    assert compute_plugin_hash(outside, provenance="installed_plugin") != outside_baseline
+    (outside / ".in_use/12345").unlink()
+    (outside / ".in_use").rmdir()
+    (outside / ".in_use").symlink_to(tmp_path)
+    assert compute_plugin_hash(outside, provenance="installed_plugin") is None
+
+
+def test_hash_with_unexpandable_claude_profile_keeps_markers_significant(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    plugin = _plugin(tmp_path, [])
+    monkeypatch.setenv("CLAUDE_CONFIG_DIR", "~ai_config_no_such_user/profile")
+    baseline = compute_plugin_hash(plugin, provenance="installed_plugin")
+    assert baseline is not None
+    markers = plugin / ".in_use"
+    markers.mkdir()
+    marker = markers / "12345"
+    marker.write_text("source data")
+    assert compute_plugin_hash(plugin, provenance="installed_plugin") != baseline
+    assert (
+        compute_plugin_conversion_hash(
+            plugin, ignored_paths=frozenset(), provenance="installed_plugin"
+        )
+        != baseline
+    )
+    marker.unlink()
+    markers.rmdir()
+    markers.symlink_to(tmp_path)
+    assert compute_plugin_hash(plugin, provenance="installed_plugin") is None
+
+
+def test_hash_does_not_ignore_unsafe_or_non_directory_in_use(tmp_path: Path) -> None:
+    plugin = _plugin(tmp_path, [])
+    baseline = compute_plugin_hash(plugin)
+    assert baseline is not None
+    marker_path = plugin / ".in_use"
+    marker_path.write_text("plugin data")
+    assert compute_plugin_hash(plugin) != baseline
+    marker_path.unlink()
+    marker_path.symlink_to(tmp_path)
+    assert compute_plugin_hash(plugin) is None
+    marker_path.unlink()
+
+    # Exclusion cannot make a symlink in the source-root ancestry safe.
+    parent_link = tmp_path / "linked"
+    parent_link.symlink_to(plugin, target_is_directory=True)
+    assert compute_plugin_hash(parent_link) is None
+
+
 def test_hash_includes_shared_bytes_and_fails_closed_on_symlink(tmp_path: Path) -> None:
     plugin = _plugin(tmp_path, ["shared/data.txt"])
     (plugin / "shared").mkdir()

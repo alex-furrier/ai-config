@@ -336,6 +336,7 @@ class ContainedSource:
         context_mirrors: list[SourceContextMirror] | None = None,
         allow_context_mirrors: bool = False,
         excluded_directory_names: frozenset[str] = frozenset(),
+        excluded_root_directory_names: frozenset[str] = frozenset(),
     ) -> None:
         try:
             names = sorted(os.listdir(directory_fd))
@@ -349,7 +350,10 @@ class ContainedSource:
             child = directory / name
             try:
                 item_stat = os.stat(name, dir_fd=directory_fd, follow_symlinks=False)
-                if stat.S_ISDIR(item_stat.st_mode) and name in excluded_directory_names:
+                if stat.S_ISDIR(item_stat.st_mode) and (
+                    name in excluded_directory_names
+                    or (directory == PurePosixPath(".") and name in excluded_root_directory_names)
+                ):
                     continue
                 if stat.S_ISLNK(item_stat.st_mode):
                     if not allow_context_mirrors or context_mirrors is None:
@@ -376,6 +380,7 @@ class ContainedSource:
                             context_mirrors=context_mirrors,
                             allow_context_mirrors=allow_context_mirrors,
                             excluded_directory_names=excluded_directory_names,
+                            excluded_root_directory_names=excluded_root_directory_names,
                         )
                     finally:
                         os.close(child_fd)
@@ -478,6 +483,7 @@ class ContainedSource:
         *,
         context: str,
         excluded_directory_names: frozenset[str] = frozenset(),
+        excluded_root_directory_names: frozenset[str] = frozenset(),
     ) -> tuple[tuple[PurePosixPath, ...], tuple[SourceContextMirror, ...]]:
         """Collect regular files plus exact repository context mirror metadata."""
         files: list[PurePosixPath] = []
@@ -494,6 +500,7 @@ class ContainedSource:
                 context_mirrors=mirrors,
                 allow_context_mirrors=True,
                 excluded_directory_names=excluded_directory_names,
+                excluded_root_directory_names=excluded_root_directory_names,
             )
         finally:
             os.close(root_fd)
