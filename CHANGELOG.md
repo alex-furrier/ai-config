@@ -29,8 +29,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Sync may apply one immutable Claude prerequisite plan and one separately observed conversion plan,
   allowing fresh remote plugins to install and convert in one bounded invocation without apply-time
   replanning or recursive retries.
-- Accept the repository-tested Codex 0.153.x and 0.156.x plugin lifecycle schema/version contracts
-  alongside 0.144.x through 0.149.x. Captured auth-free probes cover 0.153.3 and 0.156.1, while
+- Accept the repository-tested Codex 0.153.x, 0.156.x, and 0.157.x plugin lifecycle
+  schema/version contracts alongside 0.144.x through 0.149.x. Captured auth-free probes cover
+  0.153.3, 0.156.1, and 0.157.0, while
   unverified 0.150.x through 0.152.x, 0.154.x, and 0.155.x releases remain fail-closed.
 
 ### Fixed
