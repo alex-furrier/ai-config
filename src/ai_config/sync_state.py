@@ -151,10 +151,12 @@ def conversion_signature(conversion: ConversionConfig, output_dir: Path) -> str:
 def _is_installed_claude_cache_source(plugin_path: Path, provenance: SourceProvenance) -> bool:
     if provenance != "installed_plugin":
         return False
-    configured_dir = os.environ.get("CLAUDE_CONFIG_DIR", "").strip()
-    config_dir = Path(configured_dir).expanduser() if configured_dir else Path.home() / ".claude"
-    cache_dir = (config_dir / "plugins" / "cache").absolute()
     try:
+        configured_dir = os.environ.get("CLAUDE_CONFIG_DIR", "").strip()
+        config_dir = (
+            Path(configured_dir).expanduser() if configured_dir else Path.home() / ".claude"
+        )
+        cache_dir = (config_dir / "plugins" / "cache").absolute()
         source = plugin_path.absolute()
         if ".." in source.parts or ".." in cache_dir.parts:
             return False

@@ -743,6 +743,30 @@ def test_hash_keeps_local_and_non_cache_in_use_significant(
     assert compute_plugin_hash(outside, provenance="installed_plugin") is None
 
 
+def test_hash_with_unexpandable_claude_profile_keeps_markers_significant(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    plugin = _plugin(tmp_path, [])
+    monkeypatch.setenv("CLAUDE_CONFIG_DIR", "~ai_config_no_such_user/profile")
+    baseline = compute_plugin_hash(plugin, provenance="installed_plugin")
+    assert baseline is not None
+    markers = plugin / ".in_use"
+    markers.mkdir()
+    marker = markers / "12345"
+    marker.write_text("source data")
+    assert compute_plugin_hash(plugin, provenance="installed_plugin") != baseline
+    assert (
+        compute_plugin_conversion_hash(
+            plugin, ignored_paths=frozenset(), provenance="installed_plugin"
+        )
+        != baseline
+    )
+    marker.unlink()
+    markers.rmdir()
+    markers.symlink_to(tmp_path)
+    assert compute_plugin_hash(plugin, provenance="installed_plugin") is None
+
+
 def test_hash_does_not_ignore_unsafe_or_non_directory_in_use(tmp_path: Path) -> None:
     plugin = _plugin(tmp_path, [])
     baseline = compute_plugin_hash(plugin)
