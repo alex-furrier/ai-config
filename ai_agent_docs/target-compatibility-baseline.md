@@ -70,7 +70,7 @@ This is ai-config build metadata, not a claim that Claude itself materializes th
 accepts and loads the source skill; ai-config strips the field while producing self-contained target
 skills.
 
-## Codex 0.144.5, 0.145.0, 0.146.0, 0.148.0, 0.149.0, 0.153.3, and 0.156.1 runtime evidence
+## Codex 0.144.5, 0.145.0, 0.146.0, 0.148.0, 0.149.0, 0.153.3, 0.156.1, and 0.157.0 runtime evidence
 
 The latest lane resolved npm's `@openai/codex@latest` tag at execution time on 2026-07-16:
 
@@ -154,6 +154,28 @@ darwin-arm64 integrity: sha512-Jg6wbdV+wmMZczhwE74GSxOYEZlViKXn6KyCw/yfrz3PAKFD1
 install source:    Dots-managed npm package with isolated auth-free probe state
 ```
 
+On 2026-09-25, `tests/probes/probe_latest_codex.sh` resolved `@openai/codex@0.157.0`, verified
+both registry SHA-512 integrities, and passed the package and public-sync probes on Darwin arm64
+with temporary HOME/CODEX_HOME and API keys removed:
+
+```text
+main tarball:     https://registry.npmjs.org/@openai/codex/-/codex-0.157.0.tgz
+main integrity:   sha512-st1R2MhP3ndngOqj2SVh1qk6ED1lpgtlDxipDUyxlKfbsna0imwU2FdTnCjohFQpVh4bR5D5m1hA05AuW2v8Xg==
+darwin-arm64:     https://registry.npmjs.org/@openai/codex/-/codex-0.157.0-darwin-arm64.tgz
+platform integrity: sha512-mcaLbR+tTizMr7nzxBscNfPpGrdxmsyyDqXnpPPd2419YXorDiLGpF5QmtA29gUUFg9ppjhZjM854R4tXNHzVQ==
+version output:  codex-cli 0.157.0
+result:          package probe passed; public sync probe passed
+```
+
+Like 0.156.1, 0.157.0 reports stable/true for hooks, plugin_sharing, plugins, and remote_plugin.
+Its isolated local marketplace/plugin JSON lifecycle, enabled and disabled skill discovery,
+hooks/MCP ingestion, update/reinstall, idempotence, strict config doctor, and unrelated-state
+preservation passed without adapter schema changes. Public sync confirmed forced verify, no-op,
+output repair, source update, drift reinstall, owned removal, and preservation of directly seeded
+source-less catalog state (not exposed by this version). Plugin add/list/remove help text changed
+from configured snapshots/local cache to configured or remote marketplaces/uninstall, but the
+parsed local CLI commands and JSON contract used by ai-config still passed both probes.
+
 The 0.153.3 and 0.156.1 runtime probes confirmed the same stable feature rows, lifecycle mutation
 semantics, source-less catalog behavior, and package discovery contract previously observed through
 0.149.0. A logged-in catalog probe additionally found remote available rows using typed
@@ -180,7 +202,7 @@ remote_plugin                        stable             true
 This differs from the 0.142.3 spike: `remote_plugin` moved from `under development false` to
 `stable true`. ai-config's local package implementation does not depend on remote plugin behavior.
 
-Observed help surfaces:
+Observed help surfaces through 0.156.1 (0.157.0 changes are listed below):
 
 | Command | First help line / contract |
 |---|---|
@@ -194,9 +216,19 @@ Observed help surfaces:
 | `codex plugin marketplace upgrade --help` | Refresh configured Git marketplace snapshots. |
 | `codex plugin marketplace remove --help` | Remove a configured marketplace source by name |
 
-Official sources checked through 2026-09-23:
+The 0.157.0 isolated package probe observed these changed first help lines; the other rows above
+were unchanged in that probe:
+
+| Command | First help line in 0.157.0 |
+|---|---|
+| `codex plugin add --help` | Install a plugin from a configured or remote marketplace. |
+| `codex plugin list --help` | List plugins available from configured and remote marketplaces |
+| `codex plugin remove --help` | Uninstall a plugin and remove its local cache. |
+
+Official sources checked through 2026-09-23; the 0.157.0 release link was verified on 2026-09-25:
 
 - [Codex changelog](https://developers.openai.com/codex/changelog)
+- [Codex 0.157.0 release](https://github.com/openai/codex/releases/tag/rust-v0.157.0)
 - [Codex 0.156.1 release](https://github.com/openai/codex/releases/tag/rust-v0.156.1)
 - [Codex 0.153.3 release](https://github.com/openai/codex/releases/tag/rust-v0.153.3)
 - [Codex 0.149.0 release](https://github.com/openai/codex/releases/tag/rust-v0.149.0)
@@ -232,8 +264,8 @@ duplicate runtime records, source/path mismatches, and SemVer downgrades fail be
 Removal is limited to entries recorded in the ownership file. Possible old loose output is reported
 by `doctor` and never removed without proof of ownership.
 
-The adapter accepts Codex 0.144.x through 0.149.x, 0.153.x, and 0.156.x contracts. Captured
-isolated runtime evidence in this document includes 0.153.3 and 0.156.1. Unverified 0.150.x through
+The adapter accepts Codex 0.144.x through 0.149.x, 0.153.x, 0.156.x, and 0.157.x contracts. Captured
+isolated runtime evidence in this document includes 0.153.3, 0.156.1, and 0.157.0. Unverified 0.150.x through
 0.152.x, 0.154.x, and 0.155.x releases remain fail-closed. The adapter validates the CLI version plus typed schemas and
 semantic identity for marketplace list/add/remove and plugin list/add/remove responses. Malformed
 JSON, duplicate keys/records, partial output, unknown versions,

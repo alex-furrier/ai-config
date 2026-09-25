@@ -1120,6 +1120,7 @@ def test_cli_mutation_schema_rejects_semantically_wrong_success(
         "0.149.0",
         "0.153.3",
         "0.156.1",
+        "0.157.0",
     ],
 )
 def test_cli_supported_versions_accept_observed_contract(tmp_path: Path, version: str) -> None:
@@ -1135,7 +1136,7 @@ def test_cli_supported_versions_accept_observed_contract(tmp_path: Path, version
 
 
 @pytest.mark.parametrize(
-    "version", ["0.150.0", "0.151.0", "0.152.0", "0.154.0", "0.155.0", "0.157.0"]
+    "version", ["0.150.0", "0.151.0", "0.152.0", "0.154.0", "0.155.0", "0.158.0"]
 )
 def test_cli_unknown_version_fails_closed(tmp_path: Path, version: str) -> None:
     executable = tmp_path / "codex-version"
