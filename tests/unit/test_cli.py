@@ -135,7 +135,7 @@ class TestMainGroup:
         """Shows version info."""
         result = runner.invoke(main, ["--version"])
         assert result.exit_code == 0
-        assert "0.6.2" in result.output
+        assert "0.6.3" in result.output
 
     def test_help(self, runner: CliRunner) -> None:
         """Shows help text."""

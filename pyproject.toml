@@ -1,6 +1,6 @@
 [project]
 name = "ai-config-cli"
-version = "0.6.2"
+version = "0.6.3"
 description = "Declarative plugin manager for Claude Code"
 authors = [
     { name = "Alex Furrier", email = "afurrier@gmail.com" }

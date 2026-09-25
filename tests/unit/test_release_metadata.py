@@ -14,18 +14,23 @@ def test_0_6_0_release_metadata_is_finalized() -> None:
 
 def test_0_6_2_release_metadata_is_finalized() -> None:
     changelog = (_REPO_ROOT / "CHANGELOG.md").read_text()
+
+    assert "## [0.6.2] - 2026-07-29" in changelog
+    assert "[0.6.2]: https://github.com/safurrier/ai-config/compare/v0.6.1...v0.6.2" in changelog
+
+
+def test_0_6_3_release_metadata_is_prepared() -> None:
+    changelog = (_REPO_ROOT / "CHANGELOG.md").read_text()
     pyproject = (_REPO_ROOT / "pyproject.toml").read_text()
     package_init = (_REPO_ROOT / "src/ai_config/__init__.py").read_text()
     lockfile = (_REPO_ROOT / "uv.lock").read_text()
 
-    assert 'version = "0.6.2"' in pyproject
-    assert '__version__ = "0.6.2"' in package_init
-    assert 'name = "ai-config-cli"\nversion = "0.6.2"' in lockfile
-    assert "## [0.6.2] - 2026-07-29" in changelog
-    assert (
-        "[Unreleased]: https://github.com/alex-furrier/ai-config/compare/v0.6.2...HEAD" in changelog
-    )
-    assert "[0.6.2]: https://github.com/safurrier/ai-config/compare/v0.6.1...v0.6.2" in changelog
+    assert 'version = "0.6.3"' in pyproject
+    assert '__version__ = "0.6.3"' in package_init
+    assert 'name = "ai-config-cli"\nversion = "0.6.3"' in lockfile
+    assert "## [Unreleased]\n\n## [0.6.3] - 2026-09-25" in changelog
+    assert "[Unreleased]: https://github.com/alex-furrier/ai-config/compare/v0.6.3...HEAD" in changelog
+    assert "[0.6.3]: https://github.com/alex-furrier/ai-config/compare/v0.6.2...v0.6.3" in changelog
 
 
 def test_current_repository_metadata_uses_renamed_owner() -> None:
