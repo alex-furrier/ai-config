@@ -29,7 +29,9 @@ def test_0_6_3_release_metadata_is_prepared() -> None:
     assert '__version__ = "0.6.3"' in package_init
     assert 'name = "ai-config-cli"\nversion = "0.6.3"' in lockfile
     assert "## [Unreleased]\n\n## [0.6.3] - 2026-09-25" in changelog
-    assert "[Unreleased]: https://github.com/alex-furrier/ai-config/compare/v0.6.3...HEAD" in changelog
+    assert (
+        "[Unreleased]: https://github.com/alex-furrier/ai-config/compare/v0.6.3...HEAD" in changelog
+    )
     assert "[0.6.3]: https://github.com/alex-furrier/ai-config/compare/v0.6.2...v0.6.3" in changelog
 
 
