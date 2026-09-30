@@ -28,7 +28,10 @@ def test_0_6_3_release_metadata_is_prepared() -> None:
     assert 'version = "0.6.3"' in pyproject
     assert '__version__ = "0.6.3"' in package_init
     assert 'name = "ai-config-cli"\nversion = "0.6.3"' in lockfile
-    assert "## [Unreleased]\n\n## [0.6.3] - 2026-09-25" in changelog
+    unreleased, released = changelog.split("## [0.6.3] - 2026-09-25", maxsplit=1)
+    assert "## [Unreleased]\n" in unreleased
+    assert "### Fixed\n\n- Accept the locally verified Codex CLI 0.159.2" in unreleased
+    assert "## [0.6.2] - 2026-07-29" in released
     assert (
         "[Unreleased]: https://github.com/alex-furrier/ai-config/compare/v0.6.3...HEAD" in changelog
     )

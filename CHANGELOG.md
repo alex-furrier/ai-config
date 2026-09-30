@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Accept the locally verified Codex CLI 0.159.2 plugin lifecycle JSON contract for local
+  marketplaces and plugins; other unverified 0.159.x releases remain fail-closed.
+
 ## [0.6.3] - 2026-09-25
 
 ### Added

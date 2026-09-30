@@ -26,7 +26,8 @@ _SUPPORTED_CODEX_MAJOR_MINORS = {
     (0, 156),
     (0, 157),
 }
-_SUPPORTED_CODEX_CONTRACT = "0.144.x through 0.149.x, 0.153.x, 0.156.x, or 0.157.x"
+_SUPPORTED_CODEX_PATCHES = {(0, 159, 2)}
+_SUPPORTED_CODEX_CONTRACT = "0.144.x through 0.149.x, 0.153.x, 0.156.x, 0.157.x, or 0.159.2"
 _DEFAULT_TIMEOUT_SECONDS = 30.0
 _TERMINATION_GRACE_SECONDS = 0.5
 _REAP_TIMEOUT_SECONDS = 0.5
@@ -293,7 +294,11 @@ class CodexCLI:
                 stderr=str(error),
                 remediation=remediation,
             ) from error
-        if (version.major, version.minor) not in _SUPPORTED_CODEX_MAJOR_MINORS:
+        if (version.major, version.minor) not in _SUPPORTED_CODEX_MAJOR_MINORS and (
+            (version.major, version.minor, version.patch) not in _SUPPORTED_CODEX_PATCHES
+            or version.prerelease
+            or version.build
+        ):
             raise self._error(
                 "inspect-version",
                 ["--version"],

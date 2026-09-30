@@ -1121,6 +1121,7 @@ def test_cli_mutation_schema_rejects_semantically_wrong_success(
         "0.153.3",
         "0.156.1",
         "0.157.0",
+        "0.159.2",
     ],
 )
 def test_cli_supported_versions_accept_observed_contract(tmp_path: Path, version: str) -> None:
@@ -1136,7 +1137,18 @@ def test_cli_supported_versions_accept_observed_contract(tmp_path: Path, version
 
 
 @pytest.mark.parametrize(
-    "version", ["0.150.0", "0.151.0", "0.152.0", "0.154.0", "0.155.0", "0.158.0"]
+    "version",
+    [
+        "0.150.0",
+        "0.151.0",
+        "0.152.0",
+        "0.154.0",
+        "0.155.0",
+        "0.158.0",
+        "0.159.1",
+        "0.159.3",
+        "0.160.0",
+    ],
 )
 def test_cli_unknown_version_fails_closed(tmp_path: Path, version: str) -> None:
     executable = tmp_path / "codex-version"
@@ -1145,6 +1157,76 @@ def test_cli_unknown_version_fails_closed(tmp_path: Path, version: str) -> None:
 
     with pytest.raises(CodexCommandError, match="unsupported Codex CLI response contract"):
         CodexCLI(str(executable)).list_marketplaces()
+
+
+def test_cli_0159_local_marketplace_lifecycle_response_contract(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """0.159.2 isolated offline local-plugin probe shapes remain accepted end to end."""
+    executable = tmp_path / "codex-version"
+    executable.write_text("#!/bin/sh\necho 'codex-cli 0.159.2'\n")
+    executable.chmod(executable.stat().st_mode | stat.S_IXUSR)
+    cli = CodexCLI(str(executable))
+    root = tmp_path / "market"
+    source = root / "plugins/demo"
+    installed_path = tmp_path / "home/.codex/plugins/cache/probe-market/demo/1.0.0"
+    marketplace = {
+        "name": "probe-market",
+        "root": str(root),
+        "marketplaceSource": {"sourceType": "local", "source": str(root)},
+    }
+    plugin = {
+        "pluginId": "demo@probe-market",
+        "name": "demo",
+        "marketplaceName": "probe-market",
+        "version": "1.0.0",
+        "installed": False,
+        "enabled": False,
+        "source": {"source": "local", "path": str(source)},
+        "marketplaceSource": {"sourceType": "local", "source": str(root)},
+        "installPolicy": "AVAILABLE",
+        "authPolicy": "ON_INSTALL",
+    }
+    responses = {
+        "list-marketplaces": {"marketplaces": [marketplace]},
+        "add-marketplace": {
+            "marketplaceName": "probe-market",
+            "installedRoot": str(root),
+            "alreadyAdded": False,
+        },
+        "list-plugins": {"installed": [], "available": [plugin]},
+        "install-plugin": {
+            "pluginId": "demo@probe-market",
+            "name": "demo",
+            "marketplaceName": "probe-market",
+            "version": "1.0.0",
+            "installedPath": str(installed_path),
+            "authPolicy": "ON_INSTALL",
+        },
+        "remove-plugin": {
+            "pluginId": "demo@probe-market",
+            "name": "demo",
+            "marketplaceName": "probe-market",
+        },
+        "remove-marketplace": {"marketplaceName": "probe-market", "installedRoot": None},
+    }
+    monkeypatch.setattr(cli, "run_json", lambda stage, args, **kwargs: responses[stage])
+
+    assert cli.list_marketplaces() == [CodexMarketplace("probe-market", root, "local")]
+    assert cli.add_marketplace(str(root), "probe-market").root == root
+    assert cli.list_plugins() == []
+    responses["list-plugins"] = {
+        "installed": [{**plugin, "installed": True, "enabled": True}],
+        "available": [],
+    }
+    assert cli.list_plugins() == [
+        CodexInstalledPlugin(
+            "demo@probe-market", "demo", "probe-market", "1.0.0", True, source, root
+        )
+    ]
+    assert cli.add_plugin("demo@probe-market").installed_path == installed_path
+    cli.remove_plugin("demo@probe-market")
+    cli.remove_marketplace("probe-market")
 
 
 def test_cli_failure_sanitizes_and_bounds_output(tmp_path: Path) -> None:
@@ -1198,7 +1280,8 @@ def test_cli_timeout_kills_forked_descendant_after_parent_closes_pipes(
     )
     executable.chmod(executable.stat().st_mode | stat.S_IXUSR)
 
-    cli = CodexCLI(str(executable), timeout_seconds=0.5)
+    # Allow both Python interpreters to start before the timeout; macOS startup can exceed 0.5s.
+    cli = CodexCLI(str(executable), timeout_seconds=5.0)
     monkeypatch.setattr(cli, "_ensure_supported_version", lambda: "0.144.5")
     descendant_pid: int | None = None
     try:
