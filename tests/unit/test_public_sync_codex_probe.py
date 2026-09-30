@@ -31,9 +31,7 @@ def test_source_less_catalog_hidden_for_supported_versions(
         )
 
 
-@pytest.mark.parametrize(
-    "version", ["0.159.0", "0.159.1", "0.159.2-rc.1", "0.159.2+other"]
-)
+@pytest.mark.parametrize("version", ["0.159.0", "0.159.1", "0.159.2-rc.1", "0.159.2+other"])
 def test_source_less_catalog_unknown_version_fails_closed(
     assert_catalog_contract: CatalogContract, version: str
 ) -> None:
