@@ -236,6 +236,31 @@ def _source_less_catalog_state(codex: str, env: dict[str, str]) -> set[tuple[str
     return catalog_pairs
 
 
+def _assert_source_less_catalog_contract(
+    version_output: str, source_less_catalog_state: set[tuple[str, str]]
+) -> None:
+    version = SemanticVersion.parse(
+        version_output.removeprefix("codex-cli "), context="Codex CLI version"
+    )
+    source_less_catalog_entry = (_SOURCE_LESS_MARKETPLACE, _SOURCE_LESS_PLUGIN_ID)
+    if (version.major, version.minor) in {(0, 144), (0, 145), (0, 146), (0, 147)}:
+        if source_less_catalog_entry not in source_less_catalog_state:
+            raise AssertionError(
+                "Codex did not expose the constructed source-less catalog state: "
+                f"{source_less_catalog_entry}"
+            )
+    elif (version.major, version.minor) in {(0, 148), (0, 149), (0, 153), (0, 156), (0, 157)} or (
+        version_output == "codex-cli 0.159.2"
+    ):
+        if source_less_catalog_state:
+            raise AssertionError(
+                f"Codex {version.major}.{version.minor} unexpectedly exposed directly seeded "
+                "source-less catalog state"
+            )
+    else:
+        raise AssertionError(f"unsupported Codex public-sync probe version: {version_output}")
+
+
 def probe(codex: str) -> dict[str, object]:
     repo_root = Path(__file__).resolve().parents[2]
     source_fixture = repo_root / "tests/fixtures/sample-plugins/complete-plugin"
@@ -289,9 +314,6 @@ def probe(codex: str) -> dict[str, object]:
         )
 
         version_output = run(codex, ["--version"], env).stdout.strip()
-        version = SemanticVersion.parse(
-            version_output.removeprefix("codex-cli "), context="Codex CLI version"
-        )
 
         unrelated_path, unrelated_id = make_unrelated_marketplace(root)
         load_json(run(codex, ["plugin", "marketplace", "add", unrelated_path, "--json"], env))
@@ -300,21 +322,7 @@ def probe(codex: str) -> dict[str, object]:
         source_less_catalog = _write_source_less_catalog(codex_home)
         source_less_files = _tree_snapshot(source_less_catalog)
         source_less_catalog_state = _source_less_catalog_state(codex, env)
-        source_less_catalog_entry = (_SOURCE_LESS_MARKETPLACE, _SOURCE_LESS_PLUGIN_ID)
-        if (version.major, version.minor) in {(0, 144), (0, 145), (0, 146), (0, 147)}:
-            if source_less_catalog_entry not in source_less_catalog_state:
-                raise AssertionError(
-                    "Codex did not expose the constructed source-less catalog state: "
-                    f"{source_less_catalog_entry}"
-                )
-        elif (version.major, version.minor) in {(0, 148), (0, 149), (0, 153), (0, 156), (0, 157)}:
-            if source_less_catalog_state:
-                raise AssertionError(
-                    f"Codex {version.major}.{version.minor} unexpectedly exposed directly seeded "
-                    "source-less catalog state"
-                )
-        else:
-            raise AssertionError(f"unsupported Codex public-sync probe version: {version_output}")
+        _assert_source_less_catalog_contract(version_output, source_less_catalog_state)
 
         first_payload = _run_ai_config(config, env, "--force", "--verify")
         first = _actions(first_payload)
