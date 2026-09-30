@@ -2,7 +2,7 @@
 
 This file records the runtime assumptions behind ai-config target conversion.
 
-Last checked: 2026-09-23
+Last checked: 2026-09-30
 Context: first-class Codex plugin packages, source-less Codex marketplace metadata, Codex compatibility, and Claude skill include metadata for shared-resource projection.
 
 ## Summary
@@ -69,6 +69,34 @@ x-ai-config-includes:
 This is ai-config build metadata, not a claim that Claude itself materializes the resource. Claude
 accepts and loads the source skill; ai-config strips the field while producing self-contained target
 skills.
+
+## Codex 0.159.2 local lifecycle evidence
+
+On 2026-09-30, the installed Dots-managed `@openai/codex` CLI reported `codex-cli 0.159.2`.
+The direct installed Node 24 entrypoint was exercised with `HOME` and `CODEX_HOME` under one
+fresh `/private/tmp/codex0159.*` root, an empty inherited environment (`env -i`), and macOS
+`sandbox-exec` rules denying all network access and all file writes except inside that canonical
+root (and `/dev/null`). No host configuration or credentials were supplied. The local marketplace
+fixture had a `marketplace.json`, a plugin manifest, and one skill; no remote source was used.
+The CLI help confirmed `plugin marketplace add/list/remove` and `plugin add/list/remove` JSON
+surfaces. Actual JSON responses were:
+
+- Before add: `{"marketplaces":[]}` and `{"installed":[],"available":[]}`.
+- Marketplace add: `marketplaceName`, canonical `installedRoot`, `alreadyAdded:false`.
+  Marketplace list: `name`, `root`, `marketplaceSource:{sourceType:"local",source:<root>}`.
+- Available local plugin: `pluginId`, `name`, `marketplaceName`, `version:"1.0.0"`,
+  `installed:false`, `enabled:false`, `source:{source:"local",path:<plugin>}`,
+  `marketplaceSource`, `installPolicy:"AVAILABLE"`, `authPolicy:"ON_INSTALL"`.
+- Plugin add: `pluginId`, `name`, `marketplaceName`, `version`, `installedPath` under isolated
+  `CODEX_HOME/plugins/cache`, and `authPolicy`. Installed list moved that row to `installed`
+  with `installed:true`, `enabled:true` and an empty `available` array.
+- Plugin remove: `pluginId`, `name`, `marketplaceName`. Marketplace remove:
+  `marketplaceName`, `installedRoot:null`. Final marketplace list was empty.
+
+These typed local response shapes match the existing adapter; only the exact release 0.159.2
+was added to its version gate. Remote catalog behavior, other 0.159.x builds, authenticated
+features, and a complete generated-package sync/discovery probe were not asserted by this
+small offline fixture. A full isolated package E2E remains recommended.
 
 ## Codex 0.144.5, 0.145.0, 0.146.0, 0.148.0, 0.149.0, 0.153.3, 0.156.1, and 0.157.0 runtime evidence
 
