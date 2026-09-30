@@ -93,10 +93,14 @@ surfaces. Actual JSON responses were:
 - Plugin remove: `pluginId`, `name`, `marketplaceName`. Marketplace remove:
   `marketplaceName`, `installedRoot:null`. Final marketplace list was empty.
 
-These typed local response shapes match the existing adapter; only the exact release 0.159.2
-was added to its version gate. Remote catalog behavior, other 0.159.x builds, authenticated
-features, and a complete generated-package sync/discovery probe were not asserted by this
-small offline fixture. A full isolated package E2E remains recommended.
+These typed local response shapes match the existing adapter. The version gate now admits
+stable Codex >=0.159.2 without claiming that future releases were individually verified.
+Before every mutation, the adapter requires an enabled `plugins` feature row and validates
+both read-only marketplace/plugin JSON lists. The latest-package probe checks actual package
+and public-sync behavior in isolated homes; future source-less catalog visibility is not
+assumed to match 0.159.2. A future mutation contract can still change after successful
+preflight and leave partial state; errors require inspecting Codex state and ai-config ownership
+before retry. Remote catalog and authenticated behavior remain unverified.
 
 ## Codex 0.144.5, 0.145.0, 0.146.0, 0.148.0, 0.149.0, 0.153.3, 0.156.1, and 0.157.0 runtime evidence
 
@@ -292,7 +296,7 @@ duplicate runtime records, source/path mismatches, and SemVer downgrades fail be
 Removal is limited to entries recorded in the ownership file. Possible old loose output is reported
 by `doctor` and never removed without proof of ownership.
 
-The adapter accepts Codex 0.144.x through 0.149.x, 0.153.x, 0.156.x, and 0.157.x contracts. Captured
+The adapter accepts Codex 0.144.x through 0.149.x, 0.153.x, 0.156.x, 0.157.x, and stable >=0.159.2 contracts subject to read-only preflight. Captured
 isolated runtime evidence in this document includes 0.153.3, 0.156.1, and 0.157.0. Unverified 0.150.x through
 0.152.x, 0.154.x, and 0.155.x releases remain fail-closed. The adapter validates the CLI version plus typed schemas and
 semantic identity for marketplace list/add/remove and plugin list/add/remove responses. Malformed

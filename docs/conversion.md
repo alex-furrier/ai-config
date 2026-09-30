@@ -219,11 +219,14 @@ Every Codex subprocess has a finite timeout. On POSIX, each command starts in a 
 group; after a bounded SIGTERM grace period, timeout cleanup inspects and kills any remaining group
 even when the direct child exited first, then performs a bounded reap of the direct child. Non-POSIX
 platforms receive direct-child timeout cleanup only; ai-config 0.6.0 does not claim descendant
-cleanup there. The adapter accepts the repository-supported Codex 0.144.x through 0.149.x,
-0.153.x, 0.156.x, and 0.157.x JSON contracts. Unverified 0.150.x through 0.152.x, 0.154.x, and
-0.155.x releases remain fail-closed. Runtime probe evidence in the compatibility baseline currently
-includes 0.153.3, 0.156.1, and 0.157.0.
-Malformed, partial, inconsistent, or unknown-version responses fail closed. Duplicate local and Git
+cleanup there. The adapter accepts Codex 0.144.x through 0.149.x, 0.153.x, 0.156.x, 0.157.x,
+and >=0.159.2 (stable releases). The intervening unverified releases remain blocked.
+Before each mutation, including direct adapter add/remove, it checks the enabled `plugins` feature
+and validates both marketplace and plugin list JSON read-only. These checks cannot prove future
+mutation responses or prevent upstream behavior changing between preflight and mutation. Malformed
+or inconsistent responses fail with an explicit possible partial-state warning; inspect live Codex
+state and ai-config ownership before retrying. No remote catalog or authenticated behavior is
+certified by the local 0.159.2 probe. Duplicate local and Git
 identities also fail closed; duplicate available identities in Codex's unowned remote catalog are
 validated but tolerated because 0.153.x can report distinct remote IDs and versions for one display
 identity. Lifecycle failures retain ownership for retry, sanitize child output, name the exact stage and command,

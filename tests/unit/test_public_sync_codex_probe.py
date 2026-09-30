@@ -31,14 +31,23 @@ def test_source_less_catalog_hidden_for_supported_versions(
         )
 
 
-@pytest.mark.parametrize(
-    "version", ["0.159.0", "0.159.1", "0.159.3", "0.160.0", "0.159.2-rc.1", "0.159.2+other"]
-)
+@pytest.mark.parametrize("version", ["0.159.0", "0.159.1", "0.159.2-rc.1", "0.159.2+other"])
 def test_source_less_catalog_unknown_version_fails_closed(
     assert_catalog_contract: CatalogContract, version: str
 ) -> None:
     with pytest.raises(AssertionError, match="unsupported Codex public-sync probe version"):
         assert_catalog_contract(f"codex-cli {version}", set())
+
+
+@pytest.mark.parametrize("version", ["0.159.3", "0.160.0"])
+def test_future_catalog_visibility_is_not_assumed(
+    assert_catalog_contract: CatalogContract, version: str
+) -> None:
+    assert_catalog_contract(f"codex-cli {version}", set())
+    assert_catalog_contract(
+        f"codex-cli {version}",
+        {("source-less-marketplace", "source-less-plugin@source-less-marketplace")},
+    )
 
 
 def test_earlier_source_less_catalog_requires_visibility(

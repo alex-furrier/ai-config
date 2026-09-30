@@ -9,8 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- Accept the locally verified Codex CLI 0.159.2 plugin lifecycle JSON contract for local
-  marketplaces and plugins; other unverified 0.159.x releases remain fail-closed.
+- Accept Codex CLI >=0.159.2 in addition to previously verified version families, with live
+  read-only feature and typed list preflight before every adapter plugin mutation. Future mutation
+  contracts can still change after preflight and leave partial state; errors explicitly require
+  inspecting Codex state and ai-config ownership before retrying.
 
 ## [0.6.3] - 2026-09-25
 

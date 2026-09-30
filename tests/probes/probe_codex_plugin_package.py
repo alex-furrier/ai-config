@@ -15,6 +15,7 @@ from pathlib import Path
 from ai_config.codex_lifecycle import sync_codex_packages
 from ai_config.converters import TargetTool, convert_plugin
 from ai_config.converters.codex_package import codex_package_spec
+from ai_config.semver import SemanticVersion
 from ai_config.validators.target.codex import CodexOutputValidator
 
 SENSITIVE_ENV_VARS = {
@@ -129,7 +130,13 @@ def probe(codex: str, expected_version: str | None = None) -> dict[str, object]:
             raise AssertionError(f"expected Codex {expected_version}, got {version_output}")
         features_output = run(codex, ["features", "list"], env).stdout
         feature_evidence: dict[str, str] = {}
-        for name, (stage, value) in FEATURE_ROWS.items():
+        parsed_version = SemanticVersion.parse(version, context="Codex CLI version")
+        expected_features = (
+            {"plugins": FEATURE_ROWS["plugins"]}
+            if parsed_version >= SemanticVersion(0, 159, 2)
+            else FEATURE_ROWS
+        )
+        for name, (stage, value) in expected_features.items():
             row = next(
                 (line for line in features_output.splitlines() if line.split()[:1] == [name]), None
             )

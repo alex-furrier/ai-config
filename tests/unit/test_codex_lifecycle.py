@@ -1019,14 +1019,14 @@ def test_cli_json_rejects_malformed_and_duplicate_keys(tmp_path: Path) -> None:
         {"marketplaceName": "market"},
         {"marketplaceName": "market", "installedRoot": "/still/installed"},
         {"marketplaceName": "other", "installedRoot": None},
-        {"marketplaceName": "market", "installedRoot": None, "alreadyAdded": False},
     ],
 )
-def test_cli_marketplace_removal_requires_exact_confirmation(
+def test_cli_marketplace_removal_requires_identity_and_null_root(
     monkeypatch: pytest.MonkeyPatch, payload: dict[str, object]
 ) -> None:
     cli = CodexCLI("/bin/codex")
     monkeypatch.setattr(cli, "_ensure_supported_version", lambda: "0.144.5")
+    monkeypatch.setattr(cli, "_preflight_mutation", lambda: None)
     monkeypatch.setattr(cli, "run_json", lambda *args, **kwargs: payload)
 
     with pytest.raises(CodexCommandError, match="did not confirm removal"):
@@ -1038,6 +1038,7 @@ def test_cli_marketplace_removal_accepts_exact_confirmation(
 ) -> None:
     cli = CodexCLI("/bin/codex")
     monkeypatch.setattr(cli, "_ensure_supported_version", lambda: "0.144.5")
+    monkeypatch.setattr(cli, "_preflight_mutation", lambda: None)
     monkeypatch.setattr(
         cli,
         "run_json",
@@ -1052,6 +1053,9 @@ def test_cli_marketplace_removal_rejects_duplicate_confirmation_key(tmp_path: Pa
     executable.write_text(
         "#!/bin/sh\n"
         'if [ "$1" = "--version" ]; then echo \'codex-cli 0.144.5\'; exit 0; fi\n'
+        'if [ "$1" = "features" ]; then echo "plugins stable true"; exit 0; fi\n'
+        'if [ "$3" = "list" ]; then echo \'{"marketplaces":[]}\'; exit 0; fi\n'
+        'if [ "$2" = "list" ]; then echo \'{"installed":[],"available":[]}\'; exit 0; fi\n'
         "printf '%s' "
         '\'{"marketplaceName":"market","installedRoot":null,"installedRoot":null}\'\n'
     )
@@ -1066,6 +1070,7 @@ def test_cli_mutation_schema_rejects_semantically_wrong_success(
 ) -> None:
     cli = CodexCLI("/bin/codex")
     monkeypatch.setattr(cli, "_ensure_supported_version", lambda: "0.144.5")
+    monkeypatch.setattr(cli, "_preflight_mutation", lambda: None)
     monkeypatch.setattr(
         cli,
         "run_json",
@@ -1122,6 +1127,8 @@ def test_cli_mutation_schema_rejects_semantically_wrong_success(
         "0.156.1",
         "0.157.0",
         "0.159.2",
+        "0.159.3",
+        "0.160.0",
     ],
 )
 def test_cli_supported_versions_accept_observed_contract(tmp_path: Path, version: str) -> None:
@@ -1146,8 +1153,8 @@ def test_cli_supported_versions_accept_observed_contract(tmp_path: Path, version
         "0.155.0",
         "0.158.0",
         "0.159.1",
-        "0.159.3",
-        "0.160.0",
+        "0.159.2-rc.1",
+        "0.159.2+other",
     ],
 )
 def test_cli_unknown_version_fails_closed(tmp_path: Path, version: str) -> None:
@@ -1211,6 +1218,7 @@ def test_cli_0159_local_marketplace_lifecycle_response_contract(
         "remove-marketplace": {"marketplaceName": "probe-market", "installedRoot": None},
     }
     monkeypatch.setattr(cli, "run_json", lambda stage, args, **kwargs: responses[stage])
+    monkeypatch.setattr(cli, "_preflight_mutation", lambda: None)
 
     assert cli.list_marketplaces() == [CodexMarketplace("probe-market", root, "local")]
     assert cli.add_marketplace(str(root), "probe-market").root == root
