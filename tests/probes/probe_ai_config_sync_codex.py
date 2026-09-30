@@ -257,6 +257,10 @@ def _assert_source_less_catalog_contract(
                 f"Codex {version.major}.{version.minor} unexpectedly exposed directly seeded "
                 "source-less catalog state"
             )
+    elif version >= SemanticVersion(0, 159, 2) and not version.prerelease and not version.build:
+        # Future catalog visibility is not a known contract; lifecycle ownership checks
+        # below still guard against touching unrelated catalog entries.
+        pass
     else:
         raise AssertionError(f"unsupported Codex public-sync probe version: {version_output}")
 

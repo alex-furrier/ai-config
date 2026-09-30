@@ -26,8 +26,8 @@ _SUPPORTED_CODEX_MAJOR_MINORS = {
     (0, 156),
     (0, 157),
 }
-_SUPPORTED_CODEX_PATCHES = {(0, 159, 2)}
-_SUPPORTED_CODEX_CONTRACT = "0.144.x through 0.149.x, 0.153.x, 0.156.x, 0.157.x, or 0.159.2"
+_MIN_NEGOTIATED_CODEX = SemanticVersion(0, 159, 2)
+_SUPPORTED_CODEX_CONTRACT = "0.144.x through 0.149.x, 0.153.x, 0.156.x, 0.157.x, or >=0.159.2"
 _DEFAULT_TIMEOUT_SECONDS = 30.0
 _TERMINATION_GRACE_SECONDS = 0.5
 _REAP_TIMEOUT_SECONDS = 0.5
@@ -168,6 +168,11 @@ class CodexCLI:
         stderr: str,
         remediation: str,
     ) -> CodexCommandError:
+        if stage in {"add-marketplace", "remove-marketplace", "install-plugin", "remove-plugin"}:
+            remediation += (
+                " Mutation may already have occurred; partial sync state is possible. "
+                "Inspect Codex marketplace/plugin lists and ai-config ownership before retrying."
+            )
         return CodexCommandError(
             stage=stage,
             command=(self.executable, *args),
@@ -295,9 +300,7 @@ class CodexCLI:
                 remediation=remediation,
             ) from error
         if (version.major, version.minor) not in _SUPPORTED_CODEX_MAJOR_MINORS and (
-            (version.major, version.minor, version.patch) not in _SUPPORTED_CODEX_PATCHES
-            or version.prerelease
-            or version.build
+            version < _MIN_NEGOTIATED_CODEX or version.prerelease or version.build
         ):
             raise self._error(
                 "inspect-version",
@@ -453,8 +456,34 @@ class CodexCLI:
             )
         return results
 
-    def add_marketplace(self, path: str, expected_name: str) -> CodexMarketplace:
+    def _preflight_mutation(self) -> None:
+        """Check live read-only surfaces before any lifecycle mutation, including direct calls."""
         self._ensure_supported_version()
+        args = ["features", "list"]
+        remediation = "Enable the Codex plugins feature and verify `codex features list`."
+        output = self._run("inspect-features", args, remediation=remediation)
+        rows = [
+            line.split() for line in output.stdout.splitlines() if line.split()[:1] == ["plugins"]
+        ]
+        if (
+            len(rows) != 1
+            or len(rows[0]) < 3
+            or " ".join(rows[0][1:-1]) not in {"stable", "experimental", "under development"}
+            or rows[0][-1] != "true"
+        ):
+            raise self._error(
+                "inspect-features",
+                args,
+                returncode=output.returncode,
+                stdout=output.stdout,
+                stderr="missing or malformed enabled plugins feature row",
+                remediation=remediation,
+            )
+        self.list_marketplaces()
+        self.list_plugins()
+
+    def add_marketplace(self, path: str, expected_name: str) -> CodexMarketplace:
+        self._preflight_mutation()
         args = ["plugin", "marketplace", "add", path, "--json"]
         remediation = "Validate the generated .agents/plugins/marketplace.json, then retry sync."
         payload = self.run_json("add-marketplace", args, remediation=remediation)
@@ -486,14 +515,12 @@ class CodexCLI:
         return CodexMarketplace(name=name, root=expected_root, source_type="local")
 
     def remove_marketplace(self, name: str) -> None:
-        self._ensure_supported_version()
+        self._preflight_mutation()
         args = ["plugin", "marketplace", "remove", name, "--json"]
         remediation = "Inspect the named ai-config marketplace with Codex, then retry sync."
         payload = self.run_json("remove-marketplace", args, remediation=remediation)
-        if (
-            set(payload) != {"marketplaceName", "installedRoot"}
-            or payload["marketplaceName"] != name
-            or payload["installedRoot"] is not None
+        if payload.get("marketplaceName") != name or (
+            "installedRoot" not in payload or payload["installedRoot"] is not None
         ):
             raise self._schema_error(
                 "remove-marketplace",
@@ -760,7 +787,7 @@ class CodexCLI:
         return results
 
     def add_plugin(self, plugin_id: str) -> CodexPluginInstall:
-        self._ensure_supported_version()
+        self._preflight_mutation()
         args = ["plugin", "add", plugin_id, "--json"]
         remediation = (
             "Confirm the generated marketplace is registered and the plugin is available, "
@@ -801,7 +828,7 @@ class CodexCLI:
         )
 
     def remove_plugin(self, plugin_id: str) -> None:
-        self._ensure_supported_version()
+        self._preflight_mutation()
         args = ["plugin", "remove", plugin_id, "--json"]
         remediation = (
             "Inspect the ai-config-owned plugin entry and cache with Codex, then retry sync."
