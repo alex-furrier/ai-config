@@ -688,7 +688,7 @@ def init(output: Path | None, non_interactive: bool) -> None:
 @click.option(
     "--target",
     "-t",
-    type=click.Choice(["codex", "cursor", "opencode", "pi", "all"]),
+    type=click.Choice(["codex", "cursor", "opencode", "pi", "prime", "all"]),
     help="Validate converted output for a target tool instead of plugin health.",
 )
 @click.argument("output_dir", type=click.Path(exists=True, path_type=Path), required=False)
@@ -791,7 +791,7 @@ def _doctor_target_mode(
 
     # Determine which targets to validate
     if target == "all":
-        targets = ["codex", "cursor", "opencode", "pi"]
+        targets = ["codex", "cursor", "opencode", "pi", "prime"]
     else:
         targets = [target]
 
@@ -906,7 +906,7 @@ def _doctor_target_mode(
     "-t",
     "targets",
     multiple=True,
-    type=click.Choice(["codex", "cursor", "opencode", "pi", "all"]),
+    type=click.Choice(["codex", "cursor", "opencode", "pi", "prime", "all"]),
     default=["all"],
     show_default=True,
     help="Target tool(s) to convert to (repeatable).",
@@ -980,13 +980,20 @@ def convert(
       cursor     Cursor (skills, commands, hooks, MCP)
       opencode   OpenCode (skills, commands, MCP, LSP)
       pi         Pi (skills, prompt templates, supported hook extensions)
+      prime      Prime Agent Rust (Markdown skills only)
       all        All of the above (default)
     """
     from ai_config.converters import InstallScope, TargetTool, convert_plugin
 
     # Resolve targets
     if "all" in targets:
-        target_list = [TargetTool.CODEX, TargetTool.CURSOR, TargetTool.OPENCODE, TargetTool.PI]
+        target_list = [
+            TargetTool.CODEX,
+            TargetTool.CURSOR,
+            TargetTool.OPENCODE,
+            TargetTool.PI,
+            TargetTool.PRIME,
+        ]
     else:
         target_list = [TargetTool(t) for t in targets]
 

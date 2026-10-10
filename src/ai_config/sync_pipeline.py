@@ -138,6 +138,7 @@ class EmittedTargetBatch:
     version: str | None
     files: tuple[EmittedArtifact, ...] = ()
     cleanup_paths: tuple[Path, ...] = ()
+    prime_source: str | None = None
 
 
 @dataclass(frozen=True)

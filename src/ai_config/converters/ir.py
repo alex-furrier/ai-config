@@ -23,6 +23,7 @@ class TargetTool(str, Enum):
     CURSOR = "cursor"
     OPENCODE = "opencode"
     PI = "pi"
+    PRIME = "prime"
 
 
 class InstallScope(str, Enum):

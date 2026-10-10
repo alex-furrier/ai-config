@@ -90,12 +90,14 @@ def _snapshot_emission(
             for file in emitted.files
         ),
         cleanup_paths=tuple(emitted.cleanup_paths),
+        prime_source=f"sync:{source_plugin_id}" if target == TargetTool.PRIME else None,
     )
 
 
 def _restore_emission(batch: EmittedTargetBatch) -> EmitResult:
     return EmitResult(
         target=TargetTool(batch.target),
+        prime_source=batch.prime_source,
         files=[
             EmittedFile(file.path, file.content, file.binary, file.executable)
             for file in batch.files
@@ -449,6 +451,9 @@ def _plan_conversion_pipeline(
                     cache_valid = isinstance(
                         cached_output_hash, str
                     ) and cached_output_hash == state.compute_owned_codex_hash(candidate.codex_spec)
+        if TargetTool.PRIME in targets:
+            # Revalidate ownership/output drift on every Prime sync.
+            cache_valid = False
         if not cache_valid:
             candidates_to_convert.append((candidate, plugin_hash))
     preflight_summary["refresh"] = tuple(
@@ -464,6 +469,7 @@ def _plan_conversion_pipeline(
             reports = convert_plugin(
                 plugin_path=candidate.plugin_path,
                 targets=non_pi_targets,
+                prime_source=f"sync:{candidate.config_id}",
                 output_dir=output_dir,
                 scope=scope,
                 dry_run=True,
@@ -509,6 +515,18 @@ def _plan_conversion_pipeline(
         except (OSError, ValueError) as error:
             errors.append(f"Conversion failed for {candidate.config_id}: {error}")
 
+    prime_paths: dict[Path, str] = {}
+    for batch in planned_emissions:
+        if batch.target != TargetTool.PRIME.value:
+            continue
+        for file in batch.files:
+            previous = prime_paths.get(file.path)
+            if previous is not None:
+                errors.append(
+                    f"Prime output collision: {file.path} from {previous} "
+                    f"and {batch.source_plugin_id}"
+                )
+            prime_paths[file.path] = batch.source_plugin_id
     preflight_actions: list[SyncAction] = []
     target_removed_reason = "Codex conversion target is disabled or removed"
     try:

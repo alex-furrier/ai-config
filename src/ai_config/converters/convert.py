@@ -33,6 +33,7 @@ def convert_plugin(
     scope: InstallScope = InstallScope.PROJECT,
     dry_run: bool = False,
     best_effort: bool = False,
+    prime_source: str | None = None,
 ) -> dict[TargetTool, ConversionReport]:
     """Convert a Claude Code plugin to one or more target tool formats.
 
@@ -75,6 +76,15 @@ def convert_plugin(
             ir, plugin_path, output_dir, scope, best_effort=best_effort
         )
 
+    prime_result: EmitResult | None = None
+    if output_dir is not None and not dry_run and TargetTool.PRIME in targets:
+        prime_result = get_emitter(TargetTool.PRIME, scope).emit(ir)
+        if prime_source is not None:
+            prime_result.prime_source = prime_source
+        if prime_result.has_errors() and not best_effort:
+            raise ValueError("Prime conversion preflight has blocking emitter diagnostics")
+        prime_result.write_to(output_dir, dry_run=True)
+
     # Preserve the caller's requested report order after the Pi preflight succeeds.
     reports = {}
     for target in targets:
@@ -86,7 +96,14 @@ def convert_plugin(
             scope=scope,
             dry_run=dry_run,
             best_effort=best_effort,
-            emit_result=pi_result if target == TargetTool.PI else None,
+            emit_result=(
+                pi_result
+                if target == TargetTool.PI
+                else prime_result
+                if target == TargetTool.PRIME
+                else None
+            ),
+            prime_source=prime_source,
         )
         reports[target] = report
 
@@ -144,6 +161,7 @@ def _convert_to_target(
     dry_run: bool,
     best_effort: bool,
     emit_result: EmitResult | None = None,
+    prime_source: str | None = None,
 ) -> ConversionReport:
     """Convert IR to a single target format."""
     report = ConversionReport(
@@ -174,6 +192,9 @@ def _convert_to_target(
             )
             return report
         raise
+
+    if target == TargetTool.PRIME and prime_source is not None:
+        result.prime_source = prime_source
 
     # Add emitter diagnostics
     for diag in result.diagnostics:
@@ -220,6 +241,8 @@ def _convert_to_target(
                 reason=item.reason,
             )
     elif output_dir:
+        if target == TargetTool.PRIME:
+            result.write_to(output_dir, dry_run=True)
         for f in result.files:
             full_path = output_dir / f.path
             if isinstance(f.content, bytes):
@@ -292,6 +315,8 @@ def convert_plugin_simple(
                 root, desired, retained_sources=retained_sources, ownership_domain="standalone"
             )
         else:
+            if target == TargetTool.PRIME and result.has_errors():
+                raise ValueError("Prime conversion has blocking emitter diagnostics")
             result.write_to(Path(output_dir))
 
     return result

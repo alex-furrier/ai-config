@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Bounded Prime Agent Rust Markdown skill conversion, output validation and auth-free discovery probe. Ownership rejects unowned/edited output and retains stale projections; hooks, MCP/settings and Python packages are not converted.
+
 ### Fixed
 
 - Accept Codex CLI >=0.159.2 in addition to previously verified version families, with live

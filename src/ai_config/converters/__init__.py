@@ -16,6 +16,7 @@ from ai_config.converters.emitters import (
     EmitResult,
     OpenCodeEmitter,
     PiEmitter,
+    PrimeEmitter,
     get_emitter,
 )
 from ai_config.converters.ir import (
@@ -44,6 +45,7 @@ __all__ = [
     "CursorEmitter",
     "OpenCodeEmitter",
     "PiEmitter",
+    "PrimeEmitter",
     "EmitResult",
     # Report
     "ConversionReport",

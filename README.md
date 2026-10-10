@@ -189,3 +189,5 @@ ai-config doctor --target all ./output-dir
 ## License
 
 MIT
+
+Prime Agent Rust 0.10.0 is also available as the bounded `prime` Markdown-skill target. See [conversion details](docs/conversion.md#prime-agent-rust-bounded-markdown-support) for ownership, unsupported components, and temporary-home validation.

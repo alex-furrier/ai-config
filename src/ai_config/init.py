@@ -201,6 +201,8 @@ def _conversion_output_paths(target: str, base_dir: Path, scope: str) -> list[Pa
     """Display paths that a conversion target writes under a base output directory."""
     if target == "codex":
         return [base_dir / ".ai-config" / "codex" / "marketplaces"]
+    if target == "prime":
+        return [base_dir / ".prime" / "agent"]
     if target == "pi" and scope == "user":
         return [base_dir / ".pi" / "agent"]
     return [base_dir / f".{target}"]
@@ -714,6 +716,7 @@ def prompt_conversion_targets(
         ("cursor", "Cursor - .cursor/ directory"),
         ("opencode", "OpenCode - .opencode/ directory"),
         ("pi", "Pi - .pi/ skills, prompts, and extensions"),
+        ("prime", "Prime Agent Rust - Markdown skills only"),
     ]
 
     conv_step = 0
