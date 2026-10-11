@@ -18,6 +18,12 @@ from ai_config.pi_ownership import (
     load_pi_ownership,
     standalone_pi_source_identity,
 )
+from ai_config.prime_ownership import (
+    plan_prime_files,
+    prime_desired_files,
+    standalone_prime_source_identity,
+    write_prime_files,
+)
 
 
 def _standalone_pi_retained_sources(root: Path, source_plugin: str) -> set[str]:
@@ -33,7 +39,6 @@ def convert_plugin(
     scope: InstallScope = InstallScope.PROJECT,
     dry_run: bool = False,
     best_effort: bool = False,
-    prime_source: str | None = None,
 ) -> dict[TargetTool, ConversionReport]:
     """Convert a Claude Code plugin to one or more target tool formats.
 
@@ -79,11 +84,13 @@ def convert_plugin(
     prime_result: EmitResult | None = None
     if output_dir is not None and not dry_run and TargetTool.PRIME in targets:
         prime_result = get_emitter(TargetTool.PRIME, scope).emit(ir)
-        if prime_source is not None:
-            prime_result.prime_source = prime_source
         if prime_result.has_errors() and not best_effort:
             raise ValueError("Prime conversion preflight has blocking emitter diagnostics")
-        prime_result.write_to(output_dir, dry_run=True)
+        write_prime_files(
+            output_dir,
+            prime_desired_files(prime_result.files, standalone_prime_source_identity(plugin_path)),
+            dry_run=True,
+        )
 
     # Preserve the caller's requested report order after the Pi preflight succeeds.
     reports = {}
@@ -103,7 +110,6 @@ def convert_plugin(
                 if target == TargetTool.PRIME
                 else None
             ),
-            prime_source=prime_source,
         )
         reports[target] = report
 
@@ -161,7 +167,6 @@ def _convert_to_target(
     dry_run: bool,
     best_effort: bool,
     emit_result: EmitResult | None = None,
-    prime_source: str | None = None,
 ) -> ConversionReport:
     """Convert IR to a single target format."""
     report = ConversionReport(
@@ -192,9 +197,6 @@ def _convert_to_target(
             )
             return report
         raise
-
-    if target == TargetTool.PRIME and prime_source is not None:
-        result.prime_source = prime_source
 
     # Add emitter diagnostics
     for diag in result.diagnostics:
@@ -240,9 +242,20 @@ def _convert_to_target(
                 size_bytes=desired_sizes.get(item.path, 0),
                 reason=item.reason,
             )
+    elif output_dir and target == TargetTool.PRIME:
+        desired = prime_desired_files(result.files, standalone_prime_source_identity(source_path))
+        actions = plan_prime_files(output_dir, desired)
+        sizes = {item.relative_path: len(item.content) for item in desired}
+        if not dry_run:
+            write_prime_files(output_dir, desired, expected_actions=actions)
+        for item in actions:
+            report.add_file(
+                path=output_dir / item.path,
+                action=item.action.removesuffix("_prime_output"),
+                size_bytes=sizes[item.path],
+                reason=item.reason,
+            )
     elif output_dir:
-        if target == TargetTool.PRIME:
-            result.write_to(output_dir, dry_run=True)
         for f in result.files:
             full_path = output_dir / f.path
             if isinstance(f.content, bytes):
@@ -315,9 +328,17 @@ def convert_plugin_simple(
                 root, desired, retained_sources=retained_sources, ownership_domain="standalone"
             )
         else:
-            if target == TargetTool.PRIME and result.has_errors():
-                raise ValueError("Prime conversion has blocking emitter diagnostics")
-            result.write_to(Path(output_dir))
+            if target == TargetTool.PRIME:
+                if result.has_errors():
+                    raise ValueError("Prime conversion has blocking emitter diagnostics")
+                write_prime_files(
+                    Path(output_dir),
+                    prime_desired_files(
+                        result.files, standalone_prime_source_identity(plugin_path)
+                    ),
+                )
+            else:
+                result.write_to(Path(output_dir))
 
     return result
 

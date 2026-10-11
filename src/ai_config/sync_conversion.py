@@ -34,6 +34,14 @@ from ai_config.pi_ownership import (
     PiDesiredFile,
     apply_pi_reconciliation,
 )
+from ai_config.prime_ownership import (
+    PrimeAction,
+    PrimeActionName,
+    PrimeDesiredFile,
+    plan_prime_files,
+    prime_desired_files,
+    write_prime_files,
+)
 from ai_config.sync_pipeline import (
     ConversionCandidatePlan,
     ConversionPlan,
@@ -90,20 +98,30 @@ def _snapshot_emission(
             for file in emitted.files
         ),
         cleanup_paths=tuple(emitted.cleanup_paths),
-        prime_source=f"sync:{source_plugin_id}" if target == TargetTool.PRIME else None,
     )
 
 
 def _restore_emission(batch: EmittedTargetBatch) -> EmitResult:
     return EmitResult(
         target=TargetTool(batch.target),
-        prime_source=batch.prime_source,
         files=[
             EmittedFile(file.path, file.content, file.binary, file.executable)
             for file in batch.files
         ],
         cleanup_paths=list(batch.cleanup_paths),
     )
+
+
+def _prime_desired_from_emissions(batches: Iterable[EmittedTargetBatch]) -> list[PrimeDesiredFile]:
+    """Attach stable sync ownership to already materialized Prime bytes."""
+    return [
+        desired
+        for batch in batches
+        if batch.target == TargetTool.PRIME.value
+        for desired in prime_desired_files(
+            _restore_emission(batch).files, f"sync:{batch.source_plugin_id}"
+        )
+    ]
 
 
 def _sync_lifecycle_actions(actions: Iterable[CodexLifecycleAction]) -> list[SyncAction]:
@@ -468,8 +486,7 @@ def _plan_conversion_pipeline(
         try:
             reports = convert_plugin(
                 plugin_path=candidate.plugin_path,
-                targets=non_pi_targets,
-                prime_source=f"sync:{candidate.config_id}",
+                targets=[target for target in non_pi_targets if target != TargetTool.PRIME],
                 output_dir=output_dir,
                 scope=scope,
                 dry_run=True,
@@ -490,6 +507,13 @@ def _plan_conversion_pipeline(
             continue
         try:
             ir = parse_claude_plugin(candidate.plugin_path)
+            if ir.has_errors():
+                errors.extend(
+                    f"Conversion failed for {candidate.config_id}: {diagnostic.message}"
+                    for diagnostic in ir.diagnostics
+                    if diagnostic.severity.value == "error"
+                )
+                continue
             for target in non_pi_targets:
                 emitted = get_emitter(target, scope).emit(ir)
                 emit_errors = [
@@ -527,6 +551,7 @@ def _plan_conversion_pipeline(
                     f"and {batch.source_plugin_id}"
                 )
             prime_paths[file.path] = batch.source_plugin_id
+    prime_desired = _prime_desired_from_emissions(planned_emissions)
     preflight_actions: list[SyncAction] = []
     target_removed_reason = "Codex conversion target is disabled or removed"
     try:
@@ -546,6 +571,13 @@ def _plan_conversion_pipeline(
             preflight_actions.extend(pi_actions)
             if planned_batches is not None:
                 planned_batches.append(TargetActionBatch("pi", pi_root.resolve(), pi_actions))
+        if prime_desired:
+            prime_actions = tuple(
+                SyncAction(action=item.action, target=str(item.path), reason=item.reason)
+                for item in plan_prime_files(output_dir, prime_desired)
+            )
+            preflight_actions.extend(prime_actions)
+            planned_batches.append(TargetActionBatch("prime", output_dir.resolve(), prime_actions))
         for retiring_root in retiring_output_dirs:
             planned = sync_codex_packages(
                 [],
@@ -744,6 +776,23 @@ def apply_conversion_plan(
     cache_entries = cache["entries"]
     cache_dirty = plan.cache_dirty
     cursor = _TargetBatchCursor(plan.target_batches)
+    prime_desired = _prime_desired_from_emissions(plan.emissions)
+    prime_batches = tuple(batch for batch in plan.target_batches if batch.target == "prime")
+    if len(prime_batches) != bool(prime_desired):
+        return [], [], ["Materialized Prime action batch does not match emitted files"]
+    prime_expected = tuple(
+        PrimeAction(cast(PrimeActionName, item.action), Path(item.target), item.reason)
+        for batch in prime_batches
+        for item in batch.actions
+    )
+    if prime_desired:
+        try:
+            # Recheck every Prime guard before any target can mutate this root.
+            write_prime_files(
+                plan.output_root, prime_desired, dry_run=True, expected_actions=prime_expected
+            )
+        except (OSError, ValueError) as error:
+            return [], [], [str(error)]
 
     # Pi reconciliation owns its writes and ownership checkpoint as one exact root plan.
     for root_plan in plan.pi_roots:
@@ -767,6 +816,17 @@ def apply_conversion_plan(
         )
         committed_checkpoints.append(
             PlannedCheckpoint("ownership", str(root_plan.output_root.resolve()))
+        )
+
+    if prime_desired:
+        try:
+            expected = cursor.consume("prime", plan.output_root)
+            write_prime_files(plan.output_root, prime_desired, expected_actions=prime_expected)
+        except (OSError, ValueError) as error:
+            return actions, failed_actions, [str(error)]
+        actions.extend(expected)
+        committed_checkpoints.append(
+            PlannedCheckpoint("ownership", str(plan.output_root.resolve()))
         )
 
     tracked_pi_roots = cache.get("pi_output_dirs", [])
@@ -826,7 +886,8 @@ def apply_conversion_plan(
             continue
         try:
             for batch in candidate_batches:
-                _restore_emission(batch).write_to(plan.output_root)
+                if batch.target != TargetTool.PRIME.value:
+                    _restore_emission(batch).write_to(plan.output_root)
         except (OSError, ValueError) as error:
             errors.append(f"Conversion failed for {candidate.source_plugin_id}: {error}")
             continue

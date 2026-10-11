@@ -32,6 +32,9 @@ SyncActionName: TypeAlias = (
         "remove_pi_output",
         "noop_pi_output",
         "preserve_pi_output",
+        "create_prime_output",
+        "update_prime_output",
+        "noop_prime_output",
     ]
 )
 

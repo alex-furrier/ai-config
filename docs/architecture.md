@@ -27,6 +27,7 @@ flowchart LR
 | Skill projection | `src/ai_config/converters/skill_projection.py` | Purely materialize immutable shared include records, exact instruction rewrites, and per-copy evidence for every target. |
 | Target semantics | [Target emitters](https://github.com/alex-furrier/ai-config/blob/main/src/ai_config/converters/emitters.py), target validators | Map IR components to each target and report native, transformed, degraded, or unsupported behavior. |
 | Codex lifecycle | [Codex lifecycle](https://github.com/alex-furrier/ai-config/blob/main/src/ai_config/codex_lifecycle.py), [Codex adapter](https://github.com/alex-furrier/ai-config/blob/main/src/ai_config/adapters/codex.py) | Own generated package metadata and call Codex's marketplace/plugin lifecycle without writing shared Codex config directly. |
+| Prime ownership | `prime_ownership.py` | Apply materialized Markdown output with explicit source identity, digest guards and no automatic removal. |
 | Pi ownership | `pi_ownership.py` | Reconcile only ledger-proven output and preserve unowned or locally modified files. |
 
 ## Sync flow

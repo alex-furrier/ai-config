@@ -7,6 +7,7 @@ from pathlib import Path
 
 from ai_config import sync_state as state
 from ai_config.adapters import claude
+from ai_config.prime_ownership import read_prime_ownership
 from ai_config.sync_conversion import apply_conversion_plan, plan_conversions
 from ai_config.sync_pipeline import (
     CacheOwnershipSnapshot,
@@ -53,7 +54,7 @@ def _observed_plugin(item: claude.InstalledPlugin) -> ObservedPlugin:
 
 
 def _ownership_snapshots(
-    codex_roots: tuple[Path, ...], pi_roots: tuple[Path, ...]
+    codex_roots: tuple[Path, ...], pi_roots: tuple[Path, ...], prime_roots: tuple[Path, ...] = ()
 ) -> tuple[OwnershipSnapshot, ...]:
     snapshots = [
         OwnershipSnapshot("codex", root, (root / ".ai-config/codex/ownership.json").read_text())
@@ -63,7 +64,25 @@ def _ownership_snapshots(
         OwnershipSnapshot("pi", root, (root / ".ai-config/pi-ownership.json").read_text())
         for root in pi_roots
     )
+    snapshots.extend(
+        OwnershipSnapshot("prime", root, read_prime_ownership(root)) for root in prime_roots
+    )
     return tuple(snapshots)
+
+
+def _ownership_matches(snapshot: OwnershipSnapshot) -> bool:
+    """Recheck observed ledger state without granting new ownership authority."""
+    try:
+        if snapshot.target == "prime":
+            return read_prime_ownership(snapshot.root) == snapshot.payload
+        relative = (
+            Path(".ai-config/codex/ownership.json")
+            if snapshot.target == "codex"
+            else Path(".ai-config/pi-ownership.json")
+        )
+        return (snapshot.root / relative).read_text() == snapshot.payload
+    except (OSError, ValueError):
+        return False
 
 
 def _source_batch(
@@ -172,7 +191,13 @@ def build_sync_plan(target: TargetConfig, *, force_convert: bool = False) -> Syn
                 for root in (Path(item).expanduser().resolve(),)
                 if state.pi_root_has_ownership(root)
             )
-            ownership = _ownership_snapshots(codex_roots, pi_roots)
+            conversion = target.config.conversion
+            prime_roots = (
+                (state.resolve_conversion_output_dir(conversion).resolve(),)
+                if conversion is not None and conversion.enabled and "prime" in conversion.targets
+                else ()
+            )
+            ownership = _ownership_snapshots(codex_roots, pi_roots, prime_roots)
         except (OSError, ValueError) as error:
             observation_errors.append(str(error))
     runtime = RuntimeSnapshot(
@@ -362,16 +387,7 @@ def _precondition_error(plan: SyncPlan) -> str | None:
     if current_marketplaces != plan.runtime.marketplaces or current_plugins != plan.runtime.plugins:
         return "Claude runtime state changed after sync planning; no action was executed"
     for snapshot in plan.runtime.cache_and_ownership.ownership:
-        relative = (
-            Path(".ai-config/codex/ownership.json")
-            if snapshot.target == "codex"
-            else Path(".ai-config/pi-ownership.json")
-        )
-        try:
-            payload = (snapshot.root / relative).read_text()
-        except OSError:
-            return "Ownership state changed after sync planning; no action was executed"
-        if payload != snapshot.payload:
+        if not _ownership_matches(snapshot):
             return "Ownership state changed after sync planning; no action was executed"
     return None
 
@@ -384,17 +400,7 @@ def _conversion_precondition_error(plan: SyncPlan, expected_cache: dict) -> str 
     if current_cache != expected_cache:
         return "Conversion cache changed after sync planning; no conversion action was executed"
     for snapshot in plan.runtime.cache_and_ownership.ownership:
-        relative = (
-            Path(".ai-config/codex/ownership.json")
-            if snapshot.target == "codex"
-            else Path(".ai-config/pi-ownership.json")
-        )
-        try:
-            if (snapshot.root / relative).read_text() != snapshot.payload:
-                return (
-                    "Ownership state changed after sync planning; no conversion action was executed"
-                )
-        except OSError:
+        if not _ownership_matches(snapshot):
             return "Ownership state changed after sync planning; no conversion action was executed"
     changed_sources = tuple(
         item.config_id

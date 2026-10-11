@@ -269,6 +269,19 @@ metadata block conversion before generated writes. Live POSIX writes hold a
 stable file lock. Windows ownership writes are not supported in this slice.
 
 Dry runs make no files. Identical repeat syncs preserve file bytes and mtimes.
+Prime emitters produce files and diagnostics only. Standalone conversion attaches
+`standalone:<source-path>` ownership at the write boundary; sync derives
+`sync:<configured-plugin-id>` from its existing materialized source identity.
+No target-specific source argument is threaded through shared conversion APIs
+or emitter records. Low-level generic `EmitResult.write_to` rejects Prime output;
+use the public conversion APIs or the explicit Prime ownership writer.
+
+Sync plans include inspectable create/update/noop Prime actions, exact ownership
+ledger contents (including absence), and an ownership checkpoint for nonempty
+projections. Apply rechecks snapshots before normal actions and verifies expected
+output actions under the root lock. A deleted file after a no-op plan blocks
+that plan; a newly built plan can explicitly authorize its recreation.
+
 Prime checks ownership on every sync, including source-cache hits; a missing
 owned file can be regenerated. Stale files, disabled plugins, removed targets
 and old output roots are **retained**, including their ledger entries. Review

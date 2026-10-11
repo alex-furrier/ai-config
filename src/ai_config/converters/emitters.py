@@ -94,7 +94,6 @@ class EmitResult:
     """Result of emitting a plugin to a target format."""
 
     target: TargetTool
-    prime_source: str | None = None
     files: list[EmittedFile] = field(default_factory=list)
     mappings: list[ComponentMapping] = field(default_factory=list)
     diagnostics: list[Diagnostic] = field(default_factory=list)
@@ -172,10 +171,8 @@ class EmitResult:
         Returns list of file paths that were/would be written.
         """
         if self.target == TargetTool.PRIME:
-            from ai_config.prime_ownership import write_prime_files
-
-            return write_prime_files(
-                output_dir, self.files, source=self.prime_source, dry_run=dry_run
+            raise ValueError(
+                "Prime output requires explicit ownership; use convert_plugin or write_prime_files"
             )
 
         cleanup_targets = [
@@ -1766,12 +1763,7 @@ class PrimeEmitter:
         self._base_dir = Path(".prime/agent")
 
     def emit(self, ir: PluginIR) -> EmitResult:
-        result = EmitResult(
-            target=self.target,
-            prime_source=f"standalone:{ir.source_path.resolve()}"
-            if ir.source_path
-            else f"ir:{ir.identity.plugin_id}",
-        )
+        result = EmitResult(target=self.target)
         for skill in ir.skills():
             # Prime interprets a pyproject + src/<name>/__init__.py as an executable
             # Python skill. This adapter only promises Markdown resource projection.
