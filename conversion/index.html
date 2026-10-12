@@ -669,6 +669,45 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#prime-agent-rust-bounded-markdown-support" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Prime Agent Rust (bounded Markdown support)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Prime Agent Rust (bounded Markdown support)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#ownership-and-preview" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Ownership and preview
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sources-and-acceptance-evidence" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Sources and acceptance evidence
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -1184,6 +1223,45 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#prime-agent-rust-bounded-markdown-support" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Prime Agent Rust (bounded Markdown support)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Prime Agent Rust (bounded Markdown support)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#ownership-and-preview" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Ownership and preview
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sources-and-acceptance-evidence" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Sources and acceptance evidence
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -1489,6 +1567,119 @@ identities also fail closed; duplicate available identities in Codex's unowned r
 validated but tolerated because 0.153.x can report distinct remote IDs and versions for one display
 identity. Lifecycle failures retain ownership for retry, sanitize child output, name the exact stage and command,
 include remediation, and report completed and failed actions.</p>
+<h2 id="prime-agent-rust-bounded-markdown-support">Prime Agent Rust (bounded Markdown support)<a class="headerlink" href="#prime-agent-rust-bounded-markdown-support" title="Permanent link">&para;</a></h2>
+<p><code>--target prime</code> and <code>conversion.targets: [prime]</code> project Claude Markdown
+skills into <code>.prime/agent/skills/&lt;plugin&gt;-&lt;skill&gt;/</code>. Project scope uses the
+project output root; user scope uses the selected home output root. Both paths
+are intentional for the Rust runtime. <code>doctor --target prime</code> validates this
+output. This adapter was checked against <strong>Rust 0.10.0</strong>, not the retired
+TypeScript implementation.</p>
+<p>Names and descriptions are preserved with a plugin namespace. Supporting files
+and declared shared resources are materialized into each skill. The
+<code>disable-model-invocation</code> field is retained. Claude <code>allowed-tools</code>, model,
+context/fork, agent and user-invocable semantics are reported as lost features;
+Markdown guidance does not enforce tool permissions. Skills with a root
+<code>pyproject.toml</code> are skipped, since Prime can treat them as executable Python
+packages.</p>
+<table>
+<thead>
+<tr>
+<th>Surface</th>
+<th>Runtime evidence</th>
+<th>Adapter behavior</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Markdown skills</td>
+<td>Rust discovery and real prompt assembly</td>
+<td>Converted and validated</td>
+</tr>
+<tr>
+<td>Global instructions</td>
+<td>State-root <code>AGENTS.md</code>/<code>CLAUDE.md</code> discovery</td>
+<td>User-owned; no writes to AGENTS.md or SYSTEM.md</td>
+</tr>
+<tr>
+<td>Prompt templates and themes</td>
+<td>Rust resource loader</td>
+<td>Deferred; commands reported unsupported</td>
+</tr>
+<tr>
+<td>MCP/tool configuration</td>
+<td>Native <code>mcpServers</code> settings schema</td>
+<td>Deferred; no settings/env/token copying</td>
+</tr>
+<tr>
+<td>Hooks, Python packages, Pi extensions</td>
+<td>No established Pi extension loader</td>
+<td>Reported unsupported; no generated hooks</td>
+</tr>
+<tr>
+<td>Agents and LSP</td>
+<td>No mapping established by this adapter</td>
+<td>Reported unsupported</td>
+</tr>
+</tbody>
+</table>
+<h3 id="ownership-and-preview">Ownership and preview<a class="headerlink" href="#ownership-and-preview" title="Permanent link">&para;</a></h3>
+<p>Prime writes use <code>.ai-config/prime-ownership.json</code> under the output root. Each
+entry records a source identity and content digest. Sync identities are the
+configured plugin ID; standalone identities are the resolved source path.
+Only matching, unedited, owned files can be updated. Unowned collisions,
+symlinks, user edits, file/directory conflicts, and adjacent Python package
+metadata block conversion before generated writes. Live POSIX writes hold a
+stable file lock. Windows ownership writes are not supported in this slice.</p>
+<p>Dry runs make no files. Identical repeat syncs preserve file bytes and mtimes.
+Prime emitters produce files and diagnostics only. Standalone conversion attaches
+<code>standalone:&lt;source-path&gt;</code> ownership at the write boundary; sync derives
+<code>sync:&lt;configured-plugin-id&gt;</code> from its existing materialized source identity.
+No target-specific source argument is threaded through shared conversion APIs
+or emitter records. Low-level generic <code>EmitResult.write_to</code> rejects Prime output;
+use the public conversion APIs or the explicit Prime ownership writer.</p>
+<p>Sync plans include inspectable create/update/noop Prime actions, exact ownership
+ledger contents (including absence), and an ownership checkpoint for nonempty
+projections. Apply rechecks snapshots before normal actions and verifies expected
+output actions under the root lock. A deleted file after a no-op plan blocks
+that plan; a newly built plan can explicitly authorize its recreation.</p>
+<p>Prime checks ownership on every sync, including source-cache hits; a missing
+owned file can be regenerated. Stale files, disabled plugins, removed targets
+and old output roots are <strong>retained</strong>, including their ledger entries. Review
+and remove retired projections explicitly; this slice grants no deletion
+permission. Standalone and sync projections cannot take over each other's
+files. Lost or corrupt ledgers require explicit recovery, never silent adoption.</p>
+<p>Conversion never copies authentication, provider/model settings, or whole
+configuration homes. <code>PRIME_AGENT_CODING_AGENT_DIR</code> is a runtime state override,
+not an implicit conversion destination. For a custom profile, project a reviewed
+skill into a temporary project first or supply it using Prime's <code>--skill</code> option.
+A live profile projection needs a separate approved destination scope.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="nv">sandbox</span><span class="o">=</span><span class="k">$(</span>mktemp<span class="w"> </span>-d<span class="k">)</span>
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>ai-config<span class="w"> </span>convert<span class="w"> </span>/absolute/path/to/plugin<span class="w"> </span>--target<span class="w"> </span>prime<span class="w"> </span>--output<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$sandbox</span><span class="s2">&quot;</span><span class="w"> </span>--dry-run
+<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>ai-config<span class="w"> </span>convert<span class="w"> </span>/absolute/path/to/plugin<span class="w"> </span>--target<span class="w"> </span>prime<span class="w"> </span>--output<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$sandbox</span><span class="s2">&quot;</span>
+<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a>ai-config<span class="w"> </span>doctor<span class="w"> </span>--target<span class="w"> </span>prime<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$sandbox</span><span class="s2">&quot;</span>
+<a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a><span class="c1"># Auth-free introspection; use the actual approved Rust binary.</span>
+<a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a><span class="c1"># Keep HOME/state/XDG/TMPDIR isolated as in the repository probe below.</span>
+<a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a>uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </span>tests/probes/probe_prime_skills.py<span class="w"> </span>--prime-bin<span class="w"> </span>/absolute/path/to/prime-agent
+</code></pre></div>
+<p>The probe builds project and user fixtures in temporary homes, clears ambient
+credentials and selectors, and inspects <code>prompt --json</code>. It starts no login,
+provider change, subscription, model call or worker. It does not validate native
+worker completion or permission enforcement.</p>
+<h3 id="sources-and-acceptance-evidence">Sources and acceptance evidence<a class="headerlink" href="#sources-and-acceptance-evidence" title="Permanent link">&para;</a></h3>
+<p>Checked 2026-10-10 at upstream commit
+<code>763094e1b6a7c17450ee8399b06cda1853847ca5</code>:</p>
+<ul>
+<li><a href="https://github.com/PrimeIntellect-ai/prime-agent/blob/763094e1b6a7c17450ee8399b06cda1853847ca5/crates/pa-core/src/skills/loader.rs">Rust skill loader</a>: both scopes use <code>.prime/agent/skills</code>.</li>
+<li><a href="https://github.com/PrimeIntellect-ai/prime-agent/blob/763094e1b6a7c17450ee8399b06cda1853847ca5/crates/pa-core/src/skills/discovery.rs">Skill discovery</a>: Markdown frontmatter, description requirement, Python package detection.</li>
+<li><a href="https://github.com/PrimeIntellect-ai/prime-agent/blob/763094e1b6a7c17450ee8399b06cda1853847ca5/crates/pa-core/src/resources/mod.rs">Resource loader</a>: context files and prompt resources.</li>
+<li><a href="https://github.com/PrimeIntellect-ai/prime-agent/blob/763094e1b6a7c17450ee8399b06cda1853847ca5/crates/pa-core/src/settings/types.rs">Settings schema</a>: native MCP support; no schema equivalence assumed.</li>
+<li><a href="https://github.com/PrimeIntellect-ai/prime-agent/blob/763094e1b6a7c17450ee8399b06cda1853847ca5/crates/pa-cli/src/config.rs">State directory override</a>: <code>PRIME_AGENT_CODING_AGENT_DIR</code> and default state root.</li>
+</ul>
+<p>The implementation slice pairs emitter/validator/CLI tests with ownership
+conflict, no-deletion, idempotence, dry-run, mixed-target preflight, source
+collision and full sync tests. The runtime probe verifies actual discovery.
+Existing Codex/Cursor/OpenCode/Pi adapters keep their own mappings and ownership
+rules. Docker all-tools testing remains separate from this local Rust probe.</p>
 
 
 
