@@ -52,5 +52,6 @@ site/
 .cursor/
 .opencode/
 .pi/
+.prime/
 opencode.json
 opencode.lsp.json

@@ -18,6 +18,12 @@ from ai_config.pi_ownership import (
     load_pi_ownership,
     standalone_pi_source_identity,
 )
+from ai_config.prime_ownership import (
+    plan_prime_files,
+    prime_desired_files,
+    standalone_prime_source_identity,
+    write_prime_files,
+)
 
 
 def _standalone_pi_retained_sources(root: Path, source_plugin: str) -> set[str]:
@@ -75,6 +81,17 @@ def convert_plugin(
             ir, plugin_path, output_dir, scope, best_effort=best_effort
         )
 
+    prime_result: EmitResult | None = None
+    if output_dir is not None and not dry_run and TargetTool.PRIME in targets:
+        prime_result = get_emitter(TargetTool.PRIME, scope).emit(ir)
+        if prime_result.has_errors() and not best_effort:
+            raise ValueError("Prime conversion preflight has blocking emitter diagnostics")
+        write_prime_files(
+            output_dir,
+            prime_desired_files(prime_result.files, standalone_prime_source_identity(plugin_path)),
+            dry_run=True,
+        )
+
     # Preserve the caller's requested report order after the Pi preflight succeeds.
     reports = {}
     for target in targets:
@@ -86,7 +103,13 @@ def convert_plugin(
             scope=scope,
             dry_run=dry_run,
             best_effort=best_effort,
-            emit_result=pi_result if target == TargetTool.PI else None,
+            emit_result=(
+                pi_result
+                if target == TargetTool.PI
+                else prime_result
+                if target == TargetTool.PRIME
+                else None
+            ),
         )
         reports[target] = report
 
@@ -219,6 +242,19 @@ def _convert_to_target(
                 size_bytes=desired_sizes.get(item.path, 0),
                 reason=item.reason,
             )
+    elif output_dir and target == TargetTool.PRIME:
+        desired = prime_desired_files(result.files, standalone_prime_source_identity(source_path))
+        actions = plan_prime_files(output_dir, desired)
+        sizes = {item.relative_path: len(item.content) for item in desired}
+        if not dry_run:
+            write_prime_files(output_dir, desired, expected_actions=actions)
+        for item in actions:
+            report.add_file(
+                path=output_dir / item.path,
+                action=item.action.removesuffix("_prime_output"),
+                size_bytes=sizes[item.path],
+                reason=item.reason,
+            )
     elif output_dir:
         for f in result.files:
             full_path = output_dir / f.path
@@ -292,7 +328,17 @@ def convert_plugin_simple(
                 root, desired, retained_sources=retained_sources, ownership_domain="standalone"
             )
         else:
-            result.write_to(Path(output_dir))
+            if target == TargetTool.PRIME:
+                if result.has_errors():
+                    raise ValueError("Prime conversion has blocking emitter diagnostics")
+                write_prime_files(
+                    Path(output_dir),
+                    prime_desired_files(
+                        result.files, standalone_prime_source_identity(plugin_path)
+                    ),
+                )
+            else:
+                result.write_to(Path(output_dir))
 
     return result
 

@@ -150,3 +150,20 @@ reports possible legacy loose output without deleting it.
 Real runtime proof uses `tests/probes/probe_codex_plugin_package.py`: generation, doctor validation,
 CLI installation, enabled/disabled discovery, hook/MCP ingestion, update, idempotence, removal, and
 unrelated-state preservation in isolated homes.
+
+
+## Prime Markdown ownership
+
+Prime follows the target-specific write-boundary convention: emitters produce
+bytes and diagnostics, standalone conversion supplies its source-path identity,
+and sync uses `EmittedTargetBatch.source_plugin_id`. `PrimeDesiredFile` attaches
+that identity only to the aggregate owned root plan. Shared conversion arguments
+and emitted records do not carry a separate Prime source value.
+
+Prime actions and checkpoints are materialized alongside Pi/Codex actions.
+Observation snapshots its ledger even when absent. Apply validates that snapshot
+and create/update/noop intent before writing, including a repeat check under the
+Prime root lock. Empty projections have no ownership checkpoint. Prime retains
+stale output deliberately; Pi reconciliation may remove its proven-owned stale
+files. The low-level generic emitter writer rejects Prime output without this
+ownership boundary.

@@ -85,3 +85,5 @@ Check your `.ai-config/config.yaml` into your dotfiles. Run `ai-config sync` on 
 - [Commands](commands.md) — Full command reference
 - [Configuration](config.md) — Config file format and examples
 - [Conversion](conversion.md) — Converting plugins to other AI tools
+
+Prime Agent Rust 0.10.0 is also available as the bounded `prime` Markdown-skill target. See [conversion details](conversion.md#prime-agent-rust-bounded-markdown-support) for ownership, unsupported components, and temporary-home validation.

@@ -373,3 +373,22 @@ and probes `@latest` so reproducibility and drift detection remain independent.
 3. Isolate runtime homes and credentials.
 4. Update emitters, validators, docs, and real-tool tests together.
 5. Pin a reproducible E2E version and retain an explicit latest lane.
+
+## Prime Agent Rust 0.10.0 (2026-10-10)
+
+Prime is a bounded Markdown conversion target. Project and user resources both
+use `<output-root>/.prime/agent/skills`; the installed default state root is
+`~/.prime/agent` with `PRIME_AGENT_CODING_AGENT_DIR` override. Do not reuse Pi
+TypeScript extensions or historical Prime TypeScript instructions.
+
+The official Rust binary's `--version` reported `0.10.0`; `prompt --json` loaded
+generated namespaced skills in both temporary project and user scopes without
+inference. Run `tests/probes/probe_prime_skills.py --prime-bin <binary>` with
+`uv run python` to reproduce. No live settings or credentials were read/copied.
+See [conversion boundary and pinned sources](../docs/conversion.md#prime-agent-rust-bounded-markdown-support).
+
+Runtime-supported prompts, themes, context files and native MCP settings are
+outside this adapter's first slice. Ownership uses source identities/digests,
+rejects edits/collisions/symlinks, and retains stale output. No credential,
+provider, session-storage, plugin-hook or coordinator-enforcement claims follow
+from Markdown discovery.

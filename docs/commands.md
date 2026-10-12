@@ -180,7 +180,7 @@ ai-config doctor
 |--------|-------------|
 | `-c, --config PATH` | Path to config file |
 | `--category CATEGORY` | Run only specific validation categories (can be repeated) |
-| `-t, --target TARGET` | Validate converted output: `codex`, `cursor`, `opencode`, `pi`, or `all` |
+| `-t, --target TARGET` | Validate converted output: `codex`, `cursor`, `opencode`, `pi`, `prime`, or `all` |
 | `--json` | Output as JSON |
 | `-v, --verbose` | Show all checks including passed |
 

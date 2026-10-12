@@ -65,11 +65,11 @@ class ObservedPlugin:
 
 @dataclass(frozen=True)
 class OwnershipSnapshot:
-    """Exact ownership ledger bytes observed for one proven-owned root."""
+    """Exact ownership ledger bytes (or absence) observed for a target root."""
 
-    target: Literal["codex", "pi"]
+    target: Literal["codex", "pi", "prime"]
     root: Path
-    payload: str
+    payload: str | None
 
 
 @dataclass(frozen=True)
@@ -195,7 +195,7 @@ class PlannedCheckpoint:
 class TargetActionBatch:
     """Ordered actions owned by one target-specific lifecycle invocation."""
 
-    target: Literal["codex", "pi"]
+    target: Literal["codex", "pi", "prime"]
     output_root: Path
     actions: tuple[SyncAction, ...]
 

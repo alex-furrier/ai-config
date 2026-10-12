@@ -170,6 +170,11 @@ class EmitResult:
 
         Returns list of file paths that were/would be written.
         """
+        if self.target == TargetTool.PRIME:
+            raise ValueError(
+                "Prime output requires explicit ownership; use convert_plugin or write_prime_files"
+            )
+
         cleanup_targets = [
             validated_output_path(output_dir, cleanup_path) for cleanup_path in self.cleanup_paths
         ]
@@ -1748,11 +1753,86 @@ class PiEmitter:
         )
 
 
+class PrimeEmitter:
+    """Project Markdown skills for Prime Rust 0.10.0; never emit executable plugins."""
+
+    target = TargetTool.PRIME
+
+    def __init__(self, scope: InstallScope = InstallScope.PROJECT) -> None:
+        self.scope = scope
+        self._base_dir = Path(".prime/agent")
+
+    def emit(self, ir: PluginIR) -> EmitResult:
+        result = EmitResult(target=self.target)
+        for skill in ir.skills():
+            # Prime interprets a pyproject + src/<name>/__init__.py as an executable
+            # Python skill. This adapter only promises Markdown resource projection.
+            if any(file.relpath == "pyproject.toml" for file in skill.files):
+                result.add_mapping(
+                    "skill",
+                    skill.name,
+                    MappingStatus.UNSUPPORTED,
+                    notes="Prime Python skill packages require native authoring",
+                )
+                continue
+            if not skill.description or not skill.description.strip():
+                result.add_diagnostic(
+                    Severity.ERROR,
+                    "Prime skills require a description",
+                    component_ref=f"skill:{skill.name}",
+                )
+                continue
+            name = f"{ir.identity.plugin_id}-{skill.name}"
+            directory = self._base_dir / "skills" / name
+            body = next(
+                (
+                    f.content
+                    for f in skill.files
+                    if f.relpath == "SKILL.md" and isinstance(f, TextFile)
+                ),
+                "",
+            )
+            if body.startswith("---"):
+                body = body.split("---", 2)[-1].strip()
+            meta: dict[str, Any] = {"name": name, "description": skill.description}
+            if skill.disable_model_invocation:
+                meta["disable-model-invocation"] = True
+            content = "---\n" + yaml.safe_dump(meta, sort_keys=False) + "---\n\n" + body
+            if _emit_projected_skill(result, skill, directory, content):
+                result.add_mapping(
+                    "skill",
+                    skill.name,
+                    MappingStatus.TRANSFORM,
+                    target_path=directory / "SKILL.md",
+                    notes="Namespaced Markdown skill; supporting resources preserved",
+                    lost_features=[
+                        field
+                        for field, value in {
+                            "allowed-tools": skill.allowed_tools,
+                            "model": skill.model,
+                            "context": skill.context,
+                            "agent": skill.agent,
+                            "user-invocable": skill.user_invocable,
+                        }.items()
+                        if value is not None and value != []
+                    ],
+                )
+        for component in ir.components:
+            if not isinstance(component, Skill):
+                result.add_mapping(
+                    component.kind.value,
+                    getattr(component, "name", "hooks"),
+                    MappingStatus.UNSUPPORTED,
+                    notes="Prime adapter supports Markdown skills only; no settings writes",
+                )
+        return result
+
+
 # Factory function
 def get_emitter(
     target: TargetTool,
     scope: InstallScope = InstallScope.PROJECT,
-) -> CodexEmitter | CursorEmitter | OpenCodeEmitter | PiEmitter:
+) -> CodexEmitter | CursorEmitter | OpenCodeEmitter | PiEmitter | PrimeEmitter:
     """Get an emitter for the specified target tool and scope."""
     if target == TargetTool.CODEX:
         return CodexEmitter(scope)
@@ -1760,6 +1840,8 @@ def get_emitter(
         return CursorEmitter(scope)
     elif target == TargetTool.OPENCODE:
         return OpenCodeEmitter(scope)
+    elif target == TargetTool.PRIME:
+        return PrimeEmitter(scope)
     elif target == TargetTool.PI:
         return PiEmitter(scope)
     else:

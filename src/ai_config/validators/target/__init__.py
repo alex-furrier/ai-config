@@ -9,16 +9,27 @@ from ai_config.validators.target.codex import CodexOutputValidator
 from ai_config.validators.target.cursor import CursorOutputValidator
 from ai_config.validators.target.opencode import OpenCodeOutputValidator
 from ai_config.validators.target.pi import PiOutputValidator
+from ai_config.validators.target.prime import PrimeOutputValidator
 
 # Type alias for any output validator
 OutputValidator = (
-    CodexOutputValidator | CursorOutputValidator | OpenCodeOutputValidator | PiOutputValidator
+    CodexOutputValidator
+    | CursorOutputValidator
+    | OpenCodeOutputValidator
+    | PiOutputValidator
+    | PrimeOutputValidator
 )
 
 
 def get_output_validator(
     target: str,
-) -> CodexOutputValidator | CursorOutputValidator | OpenCodeOutputValidator | PiOutputValidator:
+) -> (
+    CodexOutputValidator
+    | CursorOutputValidator
+    | OpenCodeOutputValidator
+    | PiOutputValidator
+    | PrimeOutputValidator
+):
     """Get the appropriate output validator for a target tool.
 
     Args:
@@ -35,6 +46,7 @@ def get_output_validator(
         "cursor": CursorOutputValidator,
         "opencode": OpenCodeOutputValidator,
         "pi": PiOutputValidator,
+        "prime": PrimeOutputValidator,
     }
 
     target_lower = target.lower()
@@ -50,6 +62,7 @@ __all__ = [
     "CursorOutputValidator",
     "OpenCodeOutputValidator",
     "PiOutputValidator",
+    "PrimeOutputValidator",
     "get_output_validator",
     "OutputValidator",
 ]

@@ -231,3 +231,98 @@ identities also fail closed; duplicate available identities in Codex's unowned r
 validated but tolerated because 0.153.x can report distinct remote IDs and versions for one display
 identity. Lifecycle failures retain ownership for retry, sanitize child output, name the exact stage and command,
 include remediation, and report completed and failed actions.
+
+## Prime Agent Rust (bounded Markdown support)
+
+`--target prime` and `conversion.targets: [prime]` project Claude Markdown
+skills into `.prime/agent/skills/<plugin>-<skill>/`. Project scope uses the
+project output root; user scope uses the selected home output root. Both paths
+are intentional for the Rust runtime. `doctor --target prime` validates this
+output. This adapter was checked against **Rust 0.10.0**, not the retired
+TypeScript implementation.
+
+Names and descriptions are preserved with a plugin namespace. Supporting files
+and declared shared resources are materialized into each skill. The
+`disable-model-invocation` field is retained. Claude `allowed-tools`, model,
+context/fork, agent and user-invocable semantics are reported as lost features;
+Markdown guidance does not enforce tool permissions. Skills with a root
+`pyproject.toml` are skipped, since Prime can treat them as executable Python
+packages.
+
+| Surface | Runtime evidence | Adapter behavior |
+| --- | --- | --- |
+| Markdown skills | Rust discovery and real prompt assembly | Converted and validated |
+| Global instructions | State-root `AGENTS.md`/`CLAUDE.md` discovery | User-owned; no writes to AGENTS.md or SYSTEM.md |
+| Prompt templates and themes | Rust resource loader | Deferred; commands reported unsupported |
+| MCP/tool configuration | Native `mcpServers` settings schema | Deferred; no settings/env/token copying |
+| Hooks, Python packages, Pi extensions | No established Pi extension loader | Reported unsupported; no generated hooks |
+| Agents and LSP | No mapping established by this adapter | Reported unsupported |
+
+### Ownership and preview
+
+Prime writes use `.ai-config/prime-ownership.json` under the output root. Each
+entry records a source identity and content digest. Sync identities are the
+configured plugin ID; standalone identities are the resolved source path.
+Only matching, unedited, owned files can be updated. Unowned collisions,
+symlinks, user edits, file/directory conflicts, and adjacent Python package
+metadata block conversion before generated writes. Live POSIX writes hold a
+stable file lock. Windows ownership writes are not supported in this slice.
+
+Dry runs make no files. Identical repeat syncs preserve file bytes and mtimes.
+Prime emitters produce files and diagnostics only. Standalone conversion attaches
+`standalone:<source-path>` ownership at the write boundary; sync derives
+`sync:<configured-plugin-id>` from its existing materialized source identity.
+No target-specific source argument is threaded through shared conversion APIs
+or emitter records. Low-level generic `EmitResult.write_to` rejects Prime output;
+use the public conversion APIs or the explicit Prime ownership writer.
+
+Sync plans include inspectable create/update/noop Prime actions, exact ownership
+ledger contents (including absence), and an ownership checkpoint for nonempty
+projections. Apply rechecks snapshots before normal actions and verifies expected
+output actions under the root lock. A deleted file after a no-op plan blocks
+that plan; a newly built plan can explicitly authorize its recreation.
+
+Prime checks ownership on every sync, including source-cache hits; a missing
+owned file can be regenerated. Stale files, disabled plugins, removed targets
+and old output roots are **retained**, including their ledger entries. Review
+and remove retired projections explicitly; this slice grants no deletion
+permission. Standalone and sync projections cannot take over each other's
+files. Lost or corrupt ledgers require explicit recovery, never silent adoption.
+
+Conversion never copies authentication, provider/model settings, or whole
+configuration homes. `PRIME_AGENT_CODING_AGENT_DIR` is a runtime state override,
+not an implicit conversion destination. For a custom profile, project a reviewed
+skill into a temporary project first or supply it using Prime's `--skill` option.
+A live profile projection needs a separate approved destination scope.
+
+```sh
+sandbox=$(mktemp -d)
+ai-config convert /absolute/path/to/plugin --target prime --output "$sandbox" --dry-run
+ai-config convert /absolute/path/to/plugin --target prime --output "$sandbox"
+ai-config doctor --target prime "$sandbox"
+# Auth-free introspection; use the actual approved Rust binary.
+# Keep HOME/state/XDG/TMPDIR isolated as in the repository probe below.
+uv run python tests/probes/probe_prime_skills.py --prime-bin /absolute/path/to/prime-agent
+```
+
+The probe builds project and user fixtures in temporary homes, clears ambient
+credentials and selectors, and inspects `prompt --json`. It starts no login,
+provider change, subscription, model call or worker. It does not validate native
+worker completion or permission enforcement.
+
+### Sources and acceptance evidence
+
+Checked 2026-10-10 at upstream commit
+`763094e1b6a7c17450ee8399b06cda1853847ca5`:
+
+- [Rust skill loader](https://github.com/PrimeIntellect-ai/prime-agent/blob/763094e1b6a7c17450ee8399b06cda1853847ca5/crates/pa-core/src/skills/loader.rs): both scopes use `.prime/agent/skills`.
+- [Skill discovery](https://github.com/PrimeIntellect-ai/prime-agent/blob/763094e1b6a7c17450ee8399b06cda1853847ca5/crates/pa-core/src/skills/discovery.rs): Markdown frontmatter, description requirement, Python package detection.
+- [Resource loader](https://github.com/PrimeIntellect-ai/prime-agent/blob/763094e1b6a7c17450ee8399b06cda1853847ca5/crates/pa-core/src/resources/mod.rs): context files and prompt resources.
+- [Settings schema](https://github.com/PrimeIntellect-ai/prime-agent/blob/763094e1b6a7c17450ee8399b06cda1853847ca5/crates/pa-core/src/settings/types.rs): native MCP support; no schema equivalence assumed.
+- [State directory override](https://github.com/PrimeIntellect-ai/prime-agent/blob/763094e1b6a7c17450ee8399b06cda1853847ca5/crates/pa-cli/src/config.rs): `PRIME_AGENT_CODING_AGENT_DIR` and default state root.
+
+The implementation slice pairs emitter/validator/CLI tests with ownership
+conflict, no-deletion, idempotence, dry-run, mixed-target preflight, source
+collision and full sync tests. The runtime probe verifies actual discovery.
+Existing Codex/Cursor/OpenCode/Pi adapters keep their own mappings and ownership
+rules. Docker all-tools testing remains separate from this local Rust probe.
