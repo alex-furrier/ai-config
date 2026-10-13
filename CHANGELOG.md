@@ -13,12 +13,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- Publish Prime resources through staged replacements so hardlinks cannot redirect writes. Roll back caught batch publication failures and reconcile executable permissions, including mode-only updates. Process crashes and failed rollback still require inspecting retained backups before retry.
-
 - Accept Codex CLI >=0.159.2 in addition to previously verified version families, with live
   read-only feature and typed list preflight before every adapter plugin mutation. Future mutation
   contracts can still change after preflight and leave partial state; errors explicitly require
   inspecting Codex state and ai-config ownership before retrying.
+
+- Publish Prime resources through staged replacements so hardlinks cannot redirect writes. Roll back caught batch publication failures and reconcile executable permissions, including mode-only updates. Process crashes and failed rollback still require inspecting retained backups before retry.
 
 ## [0.6.3] - 2026-09-25
 
