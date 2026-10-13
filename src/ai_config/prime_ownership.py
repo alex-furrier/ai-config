@@ -4,6 +4,9 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
+import stat
+import tempfile
 from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, Literal, TypeAlias
@@ -140,7 +143,9 @@ def _write_prime_files(
             action = PrimeAction(
                 "create_prime_output", file.relative_path, f"Create owned Prime output for {source}"
             )
-        elif destination.read_bytes() == data:
+        elif destination.read_bytes() == data and destination.stat().st_mode & 0o111 == (
+            0o111 if file.executable else 0
+        ):
             action = PrimeAction(
                 "noop_prime_output",
                 file.relative_path,
@@ -156,17 +161,78 @@ def _write_prime_files(
     if expected_actions is not None and tuple(actions) != expected_actions:
         raise ValueError("Prime output state changed after planning; no Prime output was written")
     if not dry_run and files:
-        for destination, data, executable in prepared:
-            destination.parent.mkdir(parents=True, exist_ok=True)
-            if not destination.exists() or destination.read_bytes() != data:
-                destination.write_bytes(data)
-            if executable:
-                destination.chmod(destination.stat().st_mode | 0o111)
-        ledger.parent.mkdir(parents=True, exist_ok=True)
         content = json.dumps({"schema": 1, "files": next_owned}, indent=2, sort_keys=True) + "\n"
-        if not ledger.exists() or ledger.read_text() != content:
-            ledger.write_text(content)
+        changes: list[tuple[Path, bytes, int]] = []
+        for (destination, data, executable), action in zip(prepared, actions, strict=True):
+            if action.action != "noop_prime_output":
+                mode = stat.S_IMODE(destination.stat().st_mode) if destination.exists() else 0o644
+                mode = (mode | 0o111) if executable else (mode & ~0o111)
+                changes.append((destination, data, mode))
+        if observed != content:
+            changes.append((ledger, content.encode(), 0o600))
+        _publish_batch(changes)
     return [destination for destination, _data, _executable in prepared], tuple(actions)
+
+
+def _publish_batch(changes: list[tuple[Path, bytes, int]]) -> None:
+    """Stage every write and preimage before publication; roll back caught failures.
+
+    Replacing directory entries never writes through a destination hardlink or
+    changes the permissions of its other names. Backups survive a failed rollback
+    for manual recovery. This is not a crash-atomic filesystem transaction.
+    """
+    staged: list[tuple[Path, Path, Path | None]] = []
+    published: list[tuple[Path, Path | None]] = []
+    retain_backups = False
+
+    def stage(destination: Path, data: bytes, mode: int) -> Path:
+        descriptor, name = tempfile.mkstemp(prefix=".prime-write-", dir=destination.parent)
+        path = Path(name)
+        try:
+            with os.fdopen(descriptor, "wb") as stream:
+                stream.write(data)
+                stream.flush()
+                os.fchmod(stream.fileno(), mode)
+                os.fsync(stream.fileno())
+        except BaseException:
+            path.unlink(missing_ok=True)
+            raise
+        return path
+
+    try:
+        for destination, data, mode in changes:
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            backup = None
+            replacement = stage(destination, data, mode)
+            staged.append((destination, replacement, backup))
+            if destination.exists():
+                backup = stage(
+                    destination, destination.read_bytes(), stat.S_IMODE(destination.stat().st_mode)
+                )
+                staged[-1] = (destination, replacement, backup)
+        try:
+            for destination, replacement, backup in staged:
+                os.replace(replacement, destination)
+                published.append((destination, backup))
+        except BaseException as error:
+            for destination, backup in reversed(published):
+                try:
+                    if backup is None:
+                        destination.unlink(missing_ok=True)
+                    else:
+                        os.replace(backup, destination)
+                except OSError:
+                    retain_backups = True
+            if retain_backups:
+                raise RuntimeError(
+                    "Prime rollback failed; retain .prime-write-* backups for recovery"
+                ) from error
+            raise
+    finally:
+        for _destination, replacement, backup in staged:
+            replacement.unlink(missing_ok=True)
+            if backup is not None and not retain_backups:
+                backup.unlink(missing_ok=True)
 
 
 def plan_prime_files(root: Path, files: list[PrimeDesiredFile]) -> tuple[PrimeAction, ...]:

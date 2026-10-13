@@ -167,3 +167,11 @@ Prime root lock. Empty projections have no ownership checkpoint. Prime retains
 stale output deliberately; Pi reconciliation may remove its proven-owned stale
 files. The low-level generic emitter writer rejects Prime output without this
 ownership boundary.
+
+Prime stages replacement files and ledger bytes before publication. Atomic file
+replacement preserves other names of hardlinked files; executable-bit changes
+also require an update even when content is unchanged. Caught publication errors
+restore prior bytes and modes, allowing a fresh plan and retry. Noop resources
+keep their inode and modification time. This batch is not crash-atomic: process
+termination or rollback failure requires inspecting resource state and retained
+`.prime-write-*` backups before retrying. The schema-1 digest ledger is unchanged.
