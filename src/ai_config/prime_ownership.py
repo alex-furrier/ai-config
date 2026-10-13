@@ -6,7 +6,7 @@ import hashlib
 import json
 import os
 import stat
-import tempfile
+import uuid
 from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, Literal, TypeAlias
@@ -162,19 +162,20 @@ def _write_prime_files(
         raise ValueError("Prime output state changed after planning; no Prime output was written")
     if not dry_run and files:
         content = json.dumps({"schema": 1, "files": next_owned}, indent=2, sort_keys=True) + "\n"
-        changes: list[tuple[Path, bytes, int]] = []
+        changes: list[tuple[Path, bytes, int | None, bool]] = []
         for (destination, data, executable), action in zip(prepared, actions, strict=True):
             if action.action != "noop_prime_output":
-                mode = stat.S_IMODE(destination.stat().st_mode) if destination.exists() else 0o644
-                mode = (mode | 0o111) if executable else (mode & ~0o111)
-                changes.append((destination, data, mode))
+                mode = stat.S_IMODE(destination.stat().st_mode) if destination.exists() else None
+                if mode is not None:
+                    mode = (mode | 0o111) if executable else (mode & ~0o111)
+                changes.append((destination, data, mode, executable))
         if observed != content:
-            changes.append((ledger, content.encode(), 0o600))
+            changes.append((ledger, content.encode(), 0o600, False))
         _publish_batch(changes)
     return [destination for destination, _data, _executable in prepared], tuple(actions)
 
 
-def _publish_batch(changes: list[tuple[Path, bytes, int]]) -> None:
+def _publish_batch(changes: list[tuple[Path, bytes, int | None, bool]]) -> None:
     """Stage every write and preimage before publication; roll back caught failures.
 
     Replacing directory entries never writes through a destination hardlink or
@@ -185,9 +186,15 @@ def _publish_batch(changes: list[tuple[Path, bytes, int]]) -> None:
     published: list[tuple[Path, Path | None]] = []
     retain_backups = False
 
-    def stage(destination: Path, data: bytes, mode: int) -> Path:
-        descriptor, name = tempfile.mkstemp(prefix=".prime-write-", dir=destination.parent)
-        path = Path(name)
+    def stage(destination: Path, data: bytes, mode: int | None, executable: bool = False) -> Path:
+        path = destination.parent / f".prime-write-{uuid.uuid4().hex}"
+        descriptor = os.open(
+            path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o666 if mode is None else 0o600
+        )
+        if mode is None:
+            mode = stat.S_IMODE(os.fstat(descriptor).st_mode)
+            if executable:
+                mode |= 0o111
         try:
             with os.fdopen(descriptor, "wb") as stream:
                 stream.write(data)
@@ -200,10 +207,10 @@ def _publish_batch(changes: list[tuple[Path, bytes, int]]) -> None:
         return path
 
     try:
-        for destination, data, mode in changes:
+        for destination, data, mode, executable in changes:
             destination.parent.mkdir(parents=True, exist_ok=True)
             backup = None
-            replacement = stage(destination, data, mode)
+            replacement = stage(destination, data, mode, executable)
             staged.append((destination, replacement, backup))
             if destination.exists():
                 backup = stage(

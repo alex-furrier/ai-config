@@ -113,3 +113,13 @@ def test_fresh_publish_failure_removes_partial_resources(tmp_path, monkeypatch):
     assert not (tmp_path / desired()[0].relative_path).exists()
     assert not (tmp_path / ".ai-config/prime-ownership.json").exists()
     write_prime_files(tmp_path, desired())
+
+
+@pytest.mark.parametrize("executable, expected", [(False, 0o600), (True, 0o711)])
+def test_new_resources_preserve_restrictive_umask(tmp_path, executable, expected):
+    previous = os.umask(0o077)
+    try:
+        destination = write_prime_files(tmp_path, desired(executable=executable))[0]
+    finally:
+        os.umask(previous)
+    assert destination.stat().st_mode & 0o777 == expected
