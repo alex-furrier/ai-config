@@ -20,6 +20,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Publish Prime resources through staged replacements so hardlinks cannot redirect writes. Roll back caught batch publication failures and reconcile executable permissions, including mode-only updates. Process crashes and failed rollback still require inspecting retained backups before retry.
 
+- Treat unchanged owned Prime outputs as converged without reinstalling cached Codex
+  packages during Prime ownership revalidation. Forced conversion and changed sources still
+  refresh Codex; unowned or edited Prime files remain protected.
+
 ## [0.6.3] - 2026-09-25
 
 ### Added

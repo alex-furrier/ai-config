@@ -442,6 +442,7 @@ def _plan_conversion_pipeline(
     candidates_to_convert: list[tuple[_ConversionCandidate, str | None]] = []
     candidate_hashes: dict[str, str | None] = {}
     candidate_conversion_hashes: dict[str, str | None] = {}
+    unchanged_codex_ids: set[str] = set()
     for candidate in candidates:
         source = resolved_sources[candidate.config_id]
         plugin_hash = state.compute_plugin_conversion_hash(
@@ -469,6 +470,8 @@ def _plan_conversion_pipeline(
                     cache_valid = isinstance(
                         cached_output_hash, str
                     ) and cached_output_hash == state.compute_owned_codex_hash(candidate.codex_spec)
+        if cache_valid and candidate.codex_spec is not None:
+            unchanged_codex_ids.add(candidate.codex_spec.plugin_id)
         if TargetTool.PRIME in targets:
             # Revalidate ownership/output drift on every Prime sync.
             cache_valid = False
@@ -609,6 +612,7 @@ def _plan_conversion_pipeline(
                     candidate.codex_spec.plugin_id
                     for candidate, _hash in candidates_to_convert
                     if candidate.codex_spec is not None
+                    and candidate.codex_spec.plugin_id not in unchanged_codex_ids
                 },
                 retained_plugin_ids=retained_codex_ids,
                 removal_reasons=removal_reasons,
@@ -938,6 +942,12 @@ def apply_conversion_plan(
             expected = cursor.consume("codex", plan.output_root)
         except ValueError as error:
             return actions, failed_actions, [str(error)]
+        # Prime revalidation materializes emitter batches even for cached inputs.
+        # Honor the planned Codex no-op instead of treating that materialization
+        # as a package change. Native lifecycle preconditions are still rechecked.
+        refreshed_codex_ids.difference_update(
+            action.target for action in expected if action.action == "noop_codex_plugin"
+        )
         completed, failed, lifecycle_errors = _apply_codex_lifecycle(
             list(plan.codex_specs),
             output_dir=plan.output_root,
