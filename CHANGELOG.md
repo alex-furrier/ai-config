@@ -13,6 +13,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Treat unchanged owned Prime outputs as converged without reinstalling cached Codex
+  packages during Prime ownership revalidation. Forced conversion and changed sources still
+  refresh Codex; unowned or edited Prime files remain protected.
+
 - Accept Codex CLI >=0.159.2 in addition to previously verified version families, with live
   read-only feature and typed list preflight before every adapter plugin mutation. Future mutation
   contracts can still change after preflight and leave partial state; errors explicitly require

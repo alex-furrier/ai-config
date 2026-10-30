@@ -211,7 +211,7 @@ def sync_discrepancies(results: dict[str, SyncResult]) -> list[str]:
         discrepancies.extend(
             f"{target_type}: {action.action} required for {action.target}: {action.reason}"
             for action in result.actions_taken
-            if action.action not in {"noop_codex_plugin", "noop_pi_output"}
+            if action.action not in {"noop_codex_plugin", "noop_pi_output", "noop_prime_output"}
         )
     return discrepancies
 
