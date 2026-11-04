@@ -24,6 +24,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   packages during Prime ownership revalidation. Forced conversion and changed sources still
   refresh Codex; unowned or edited Prime files remain protected.
 
+- Allow 120 seconds for Codex plugin inventory on a cold catalog cache, while keeping
+  other Codex commands on their 30-second default and retaining process-tree cleanup.
+
 ## [0.6.3] - 2026-09-25
 
 ### Added
