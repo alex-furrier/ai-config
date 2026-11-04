@@ -29,6 +29,7 @@ _SUPPORTED_CODEX_MAJOR_MINORS = {
 _MIN_NEGOTIATED_CODEX = SemanticVersion(0, 159, 2)
 _SUPPORTED_CODEX_CONTRACT = "0.144.x through 0.149.x, 0.153.x, 0.156.x, 0.157.x, or >=0.159.2"
 _DEFAULT_TIMEOUT_SECONDS = 30.0
+_INVENTORY_TIMEOUT_SECONDS = 120.0
 _TERMINATION_GRACE_SECONDS = 0.5
 _REAP_TIMEOUT_SECONDS = 0.5
 _PROCESS_GROUP_POLL_SECONDS = 0.02
@@ -151,7 +152,11 @@ class CodexCLI:
         executable: str | None = None,
         *,
         timeout_seconds: float = _DEFAULT_TIMEOUT_SECONDS,
+        inventory_timeout_seconds: float = _INVENTORY_TIMEOUT_SECONDS,
     ) -> None:
+        if inventory_timeout_seconds <= 0:
+            raise ValueError("Codex inventory timeout must be greater than zero seconds")
+        self.inventory_timeout_seconds = inventory_timeout_seconds
         if timeout_seconds <= 0:
             raise ValueError("Codex subprocess timeout must be greater than zero seconds")
         self.executable = executable or shutil.which("codex") or "codex"
@@ -246,8 +251,11 @@ class CodexCLI:
                 stderr=str(error),
                 remediation=remediation,
             ) from error
+        timeout_seconds = (
+            self.inventory_timeout_seconds if stage == "list-plugins" else self.timeout_seconds
+        )
         try:
-            stdout, stderr = process.communicate(timeout=self.timeout_seconds)
+            stdout, stderr = process.communicate(timeout=timeout_seconds)
         except subprocess.TimeoutExpired as error:
             self._stop_process_tree(process)
             raise self._error(
@@ -255,7 +263,7 @@ class CodexCLI:
                 args,
                 returncode=None,
                 stdout=_timeout_text(error.stdout),
-                stderr=f"command timed out after {self.timeout_seconds:g} seconds",
+                stderr=f"command timed out after {timeout_seconds:g} seconds",
                 remediation=remediation,
             ) from error
         if process.returncode != 0:
